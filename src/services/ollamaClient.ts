@@ -40,14 +40,23 @@ AMIGOS PRÓXIMOS:
 
 CAPACIDADES DO AGENTE (SUPER PODERES):
 - Você tem acesso TOTAL aos arquivos do sistema de Marco
-- Pode LER qualquer arquivo
+- Pode LER qualquer arquivo automaticamente quando mencionado
 - Pode MODIFICAR arquivos (só com confirmação explícita "ok")
 - Pode CRIAR arquivos e diretórios
 - Pode DELETAR arquivos (com confirmação)
 - Pode BUSCAR arquivos por nome/padrão
 - Pode CRIAR TABELAS (HTML/CSV) a partir de dados
+- Pode CRIAR AGENDAS automaticamente quando solicitado
 - Pode EXPORTAR para Google Sheets (quando configurado)
 - Todas as modificações requerem confirmação do usuário
+
+LINGUAGEM NATURAL - ENTENDA INTENÇÕES:
+- Quando Marco pedir "agenda" ou "escrever agenda" → CRIE arquivo agenda.md automaticamente
+- Quando pedir "ler agenda" → LEIA agenda.md
+- Quando pedir "escrever" ou "criar" algo → ENTENDA o contexto e crie o arquivo
+- Quando mencionar um arquivo (ex: "package.json") → LEIA automaticamente se relevante
+- Seja PROATIVO: se Marco pedir algo que requer arquivo, execute a ação
+- Use linguagem natural: "escreva agenda" = criar agenda.md, "mostra arquivo X" = ler arquivo X
 
 DIRETRIZES DE RESPOSTA:
 - Seja útil e direto - sem conversa fiada
@@ -110,21 +119,41 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
     }
   }
 
-  // Verificar se precisa usar tools do agente
+  // Verificar se precisa usar tools do agente - LINGUAGEM NATURAL MELHORADA
   const lowerMessage = enhancedMessage.toLowerCase();
   let agentContext = '';
   
-  // Detectar intenções que requerem acesso a arquivos
-  if (lowerMessage.includes('ler arquivo') || lowerMessage.includes('read file') || 
-      lowerMessage.includes('abrir arquivo') || lowerMessage.match(/ler .*\.(txt|json|csv|js|ts|py|md)/)) {
-    // Extrair caminho do arquivo se mencionado
-    const filePathMatch = enhancedMessage.match(/(?:arquivo|file)[:\s]+([^\s]+)/i) || 
-                         enhancedMessage.match(/([A-Z]:[^\s]+|\.\/[^\s]+|\/[^\s]+)/);
-    if (filePathMatch) {
-      const filePath = filePathMatch[1];
+  // Detectar menções de arquivos (linguagem natural)
+  const fileMentions = [
+    /(?:ler|leia|mostr|mostra|abre|abrir|veja|ver|exibe|exibir)[:\s]+(?:arquivo|file|o)[:\s]+([^\s"']+)/i,
+    /(?:arquivo|file)[:\s]+([^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
+    /([A-Z]:[^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
+    /(\.\/[^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
+    /(\/[^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
+  ];
+  
+  for (const pattern of fileMentions) {
+    const match = enhancedMessage.match(pattern);
+    if (match) {
+      const filePath = match[1];
       const fileContent = await agentService.readFile(filePath);
       if (fileContent) {
         agentContext += `\n\n[Conteúdo do arquivo ${filePath}]:\n${fileContent.substring(0, 2000)}`;
+        break;
+      }
+    }
+  }
+  
+  // Detectar intenção de agenda
+  if (lowerMessage.includes('agenda') || lowerMessage.includes('calendário')) {
+    if (lowerMessage.match(/\b(escrev|escreva|cri|cria|crie|faz|faça|gera|gerar|salva|salvar|anota|anotar)\b/)) {
+      // Vai criar agenda - o parser vai detectar
+      agentContext += '\n\n[Intenção detectada: Criar agenda. O sistema vai criar agenda.md automaticamente.]';
+    } else if (lowerMessage.match(/\b(ler|leia|mostr|mostra|veja|ver)\b/)) {
+      // Tentar ler agenda
+      const agendaContent = await agentService.readFile('agenda.md');
+      if (agendaContent) {
+        agentContext += `\n\n[Agenda atual]:\n${agendaContent.substring(0, 2000)}`;
       }
     }
   }

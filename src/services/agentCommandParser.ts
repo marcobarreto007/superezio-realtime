@@ -10,10 +10,57 @@ export interface ParsedCommand {
   detected: boolean;
 }
 
+// Detectar intenções em linguagem natural
+const detectIntent = (message: string): { intent: string; confidence: number } | null => {
+  const lower = message.toLowerCase();
+  
+  // Intenções de escrita/criação
+  if (lower.match(/\b(escrev|escreva|cri|cria|crie|faça|faz|gera|gerar|salva|salvar|anota|anotar)\b/)) {
+    if (lower.includes('agenda') || lower.includes('calendário') || lower.includes('calendar')) {
+      return { intent: 'create_agenda', confidence: 0.9 };
+    }
+    if (lower.match(/\b(arquivo|file|documento|doc)\b/)) {
+      return { intent: 'write_file', confidence: 0.8 };
+    }
+    return { intent: 'write', confidence: 0.7 };
+  }
+  
+  // Intenções de leitura
+  if (lower.match(/\b(ler|leia|mostr|mostra|abre|abrir|veja|ver|exibe|exibir)\b/)) {
+    if (lower.match(/\b(arquivo|file|documento)\b/)) {
+      return { intent: 'read_file', confidence: 0.8 };
+    }
+    if (lower.match(/\b(pasta|diretorio|directory|folder)\b/)) {
+      return { intent: 'list_directory', confidence: 0.8 };
+    }
+  }
+  
+  // Intenções de busca
+  if (lower.match(/\b(busc|procure|procura|encontr|find|search)\b/)) {
+    return { intent: 'search_files', confidence: 0.7 };
+  }
+  
+  // Intenções de agenda específicas
+  if (lower.includes('agenda') || lower.includes('calendário') || lower.includes('calendar')) {
+    if (lower.match(/\b(escrev|cri|cria|faz|gera|salva|anota)\b/)) {
+      return { intent: 'create_agenda', confidence: 0.9 };
+    }
+    if (lower.match(/\b(ler|mostr|veja|ver)\b/)) {
+      return { intent: 'read_agenda', confidence: 0.8 };
+    }
+    return { intent: 'agenda', confidence: 0.6 };
+  }
+  
+  return null;
+};
+
 export const parseAgentCommand = (message: string): ParsedCommand | null => {
   const lower = message.toLowerCase();
   
-  // Padrões de detecção
+  // Detectar intenção primeiro
+  const intent = detectIntent(message);
+  
+  // Padrões de detecção melhorados
   const patterns = [
     {
       tool: 'read_file',
@@ -28,18 +75,56 @@ export const parseAgentCommand = (message: string): ParsedCommand | null => {
     },
     {
       tool: 'write_file',
-      triggers: ['escrever arquivo', 'criar arquivo', 'salvar arquivo', 'write file', 'create file'],
+      triggers: [
+        'escrever arquivo', 'criar arquivo', 'salvar arquivo', 'write file', 'create file',
+        'escreva', 'escrev', 'cria', 'crie', 'faz', 'faça', 'gera', 'gerar', 'salva', 'salvar',
+        'anota', 'anotar', 'criar', 'escrever'
+      ],
       extractPath: (msg: string) => {
-        const match = msg.match(/(?:arquivo|file)[:\s]+([^\s"']+)/i) || 
-                     msg.match(/(?:em|to|para)[:\s]+([^\s"']+)/i);
-        return match ? match[1] : null;
+        // Múltiplos padrões para detectar caminho
+        const patterns = [
+          /(?:arquivo|file|documento|doc)[:\s]+([^\s"']+)/i,
+          /(?:em|to|para|in|at)[:\s]+([^\s"']+)/i,
+          /([A-Z]:[^\s"']+)/,
+          /(\.\/[^\s"']+)/,
+          /(\/[^\s"']+)/,
+          /(?:chamado|called|named)[:\s]+([^\s"']+)/i,
+        ];
+        
+        for (const pattern of patterns) {
+          const match = msg.match(pattern);
+          if (match) return match[1];
+        }
+        
+        // Se mencionou "agenda", criar arquivo agenda
+        if (lower.includes('agenda') || lower.includes('calendário')) {
+          return 'agenda.md';
+        }
+        
+        return null;
       },
       extractContent: (msg: string) => {
-        // Tentar extrair conteúdo entre aspas ou após "com conteúdo"
-        const contentMatch = msg.match(/com conteúdo[:\s]+"([^"]+)"/i) ||
-                            msg.match(/content[:\s]+"([^"]+)"/i) ||
-                            msg.match(/"([^"]+)"/);
-        return contentMatch ? contentMatch[1] : null;
+        // Múltiplos padrões para extrair conteúdo
+        const patterns = [
+          /com conteúdo[:\s]+"([^"]+)"/i,
+          /content[:\s]+"([^"]+)"/i,
+          /"([^"]+)"/,
+          /com[:\s]+"([^"]+)"/i,
+          /: "([^"]+)"/,
+          /(?:dizendo|diz|com o texto)[:\s]+"([^"]+)"/i,
+        ];
+        
+        for (const pattern of patterns) {
+          const match = msg.match(pattern);
+          if (match) return match[1];
+        }
+        
+        // Se for sobre agenda, gerar conteúdo da agenda
+        if (lower.includes('agenda') || lower.includes('calendário')) {
+          return generateAgendaContent(msg);
+        }
+        
+        return null;
       },
     },
     {
@@ -85,9 +170,35 @@ export const parseAgentCommand = (message: string): ParsedCommand | null => {
     },
   ];
 
+  // Se detectou intenção de agenda, criar comando específico
+  if (intent && intent.intent === 'create_agenda') {
+    const agendaContent = generateAgendaContent(message);
+    return {
+      tool: 'write_file',
+      parameters: {
+        filePath: 'agenda.md',
+        content: agendaContent,
+      },
+      requiresConfirmation: true,
+      detected: true,
+    };
+  }
+  
+  // Se detectou intenção de ler agenda
+  if (intent && intent.intent === 'read_agenda') {
+    return {
+      tool: 'read_file',
+      parameters: {
+        filePath: 'agenda.md',
+      },
+      requiresConfirmation: false,
+      detected: true,
+    };
+  }
+
   for (const pattern of patterns) {
     for (const trigger of pattern.triggers) {
-      if (lower.includes(trigger)) {
+      if (lower.includes(trigger) || (intent && pattern.tool === intent.intent)) {
         const parameters: Record<string, any> = {};
         
         // Extrair parâmetros específicos
@@ -132,4 +243,32 @@ export const parseAgentCommand = (message: string): ParsedCommand | null => {
 
   return null;
 };
+
+// Gerar conteúdo de agenda baseado na mensagem
+function generateAgendaContent(message: string): string {
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('pt-BR', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  
+  return `# Agenda - ${dateStr}
+
+## Eventos do Dia
+
+- [ ] 
+
+## Tarefas
+
+- [ ] 
+
+## Notas
+
+---
+
+*Agenda criada automaticamente pelo SuperEzio*
+`;
+}
 
