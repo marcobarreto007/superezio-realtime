@@ -2,6 +2,7 @@ import { getOllamaBaseUrl, getOllamaModel } from '@/config/env';
 import { Message } from '@/types';
 import { ragService } from './ragService';
 import { getWeather, getCryptoPrice, formatWeatherInfo, formatCryptoInfo } from './externalAPIs';
+import { agentService } from './agentService';
 
 const SYSTEM_PROMPT = `Você é SuperEzio, uma IA assistente com personalidade marcante.
 
@@ -37,6 +38,17 @@ AMIGOS PRÓXIMOS:
 - Marcelo Alves
 - Frederico Araujo
 
+CAPACIDADES DO AGENTE (SUPER PODERES):
+- Você tem acesso TOTAL aos arquivos do sistema de Marco
+- Pode LER qualquer arquivo
+- Pode MODIFICAR arquivos (só com confirmação explícita "ok")
+- Pode CRIAR arquivos e diretórios
+- Pode DELETAR arquivos (com confirmação)
+- Pode BUSCAR arquivos por nome/padrão
+- Pode CRIAR TABELAS (HTML/CSV) a partir de dados
+- Pode EXPORTAR para Google Sheets (quando configurado)
+- Todas as modificações requerem confirmação do usuário
+
 DIRETRIZES DE RESPOSTA:
 - Seja útil e direto - sem conversa fiada
 - Para "oi" ou saudações simples, responda de forma breve e direta
@@ -46,6 +58,8 @@ DIRETRIZES DE RESPOSTA:
 - Se a pergunta for vaga, peça esclarecimento de forma direta
 - Trate Marco como alguém técnico que valoriza eficiência
 - Use exemplos práticos quando relevante, especialmente terminal/scripts
+- Se precisar modificar arquivos, SEMPRE peça confirmação primeiro
+- Quando ler arquivos, seja objetivo e direto sobre o conteúdo
 
 EXEMPLOS:
 ❌ EVITAR: "Olá Marco! Como está o clima lá no Canadá? Vendo as previsões, parece um pouco nebuloso hoje. Você gosta de dias nublados..."
@@ -96,8 +110,27 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
     }
   }
 
+  // Verificar se precisa usar tools do agente
+  const lowerMessage = enhancedMessage.toLowerCase();
+  let agentContext = '';
+  
+  // Detectar intenções que requerem acesso a arquivos
+  if (lowerMessage.includes('ler arquivo') || lowerMessage.includes('read file') || 
+      lowerMessage.includes('abrir arquivo') || lowerMessage.match(/ler .*\.(txt|json|csv|js|ts|py|md)/)) {
+    // Extrair caminho do arquivo se mencionado
+    const filePathMatch = enhancedMessage.match(/(?:arquivo|file)[:\s]+([^\s]+)/i) || 
+                         enhancedMessage.match(/([A-Z]:[^\s]+|\.\/[^\s]+|\/[^\s]+)/);
+    if (filePathMatch) {
+      const filePath = filePathMatch[1];
+      const fileContent = await agentService.readFile(filePath);
+      if (fileContent) {
+        agentContext += `\n\n[Conteúdo do arquivo ${filePath}]:\n${fileContent.substring(0, 2000)}`;
+      }
+    }
+  }
+
   // RAG: buscar contexto relevante
-  const enhancedPrompt = await ragService.enhancePrompt(enhancedMessage, history);
+  const enhancedPrompt = await ragService.enhancePrompt(enhancedMessage + agentContext, history);
 
   const userMessages = history.slice(0, -1).map((msg): OllamaMessage => ({
     role: msg.role === 'user' ? 'user' : 'assistant',

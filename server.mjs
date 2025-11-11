@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import compression from 'compression';
+import agentRoutes from './server/agentRoutes.js';
 
 // Basic CORS for browser calls from remote origins
 function cors(req, res, next) {
@@ -23,6 +24,11 @@ const OLLAMA_TARGET = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 app.disable('x-powered-by');
 app.use(compression());
 app.use(cors);
+app.use(express.json()); // Para receber JSON no body
+app.use(express.urlencoded({ extended: true }));
+
+// API do Agente (filesystem, tools, etc)
+app.use('/api/agent', agentRoutes);
 
 // Proxy for Ollama API (keeps same path under /api/*)
 app.use(
