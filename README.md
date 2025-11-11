@@ -1,61 +1,58 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# SuperEzio Realtime
 
-# Run and deploy your AI Studio app
+Um frontend de chat moderno, limpo e responsivo, construído para interagir com modelos de linguagem rodando via Ollama.
 
-This contains everything you need to run your app locally.
+Este projeto foi completamente reestruturado para ter uma arquitetura clara, uma interface de usuário moderna e uma integração simplificada com a API do Ollama.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1fuoayGBD22BfX6hsa41qD-ILAqNmNEcr
+## ✨ Features
 
-## Run Locally
+-   Interface de chat fullscreen e responsiva.
+-   Estilização moderna com **Tailwind CSS**.
+-   Bolhas de mensagem distintas para usuário e assistente.
+-   Indicador de "digitando" enquanto o bot processa a resposta.
+-   Scroll automático para a mensagem mais recente.
+-   Lógica de envio com "Enter" (Shift+Enter para nova linha).
+-   Arquitetura baseada em componentes com React e hooks.
 
-**Prerequisites:**  Node.js
+## 🚀 Como Rodar o Projeto
 
+1.  **Clone o repositório:**
+    ```bash
+    git clone https://github.com/marcobarreto007/superezio-realtime.git
+    cd superezio-realtime
+    ```
 
-1. Install dependencies:
-   `npm install`
-2. Choose provider in [.env.local](.env.local):
-   - For Gemini (cloud): set `MODEL_PROVIDER=gemini` and `GEMINI_API_KEY=...`
-   - For Ollama (local): set `MODEL_PROVIDER=ollama`, optionally `OLLAMA_MODEL=qwen2.5:7b-instruct` and `OLLAMA_BASE_URL=http://localhost:11434`
-3. Dev (hot reload):
-   `npm run dev`
+2.  **Instale as dependências:**
+    ```bash
+    npm install
+    ```
 
-4. Production preview (build + server com proxy /ollama):
-   - `npm run build`
-   - `npm start`
-   - Acesse `http://localhost:8080` (proxy ativo em `/ollama`).
+3.  **Configure as variáveis de ambiente:**
+    -   Crie um arquivo chamado `.env.local` na raiz do projeto.
+    -   Adicione as seguintes variáveis:
 
-## Deploy (uma VM simples)
-1) Instale Node 18+ e Ollama na mesma VM.
-2) Configure envs (ex.: `.env` do shell ou serviço systemd):
-   - `PORT=8080`
-   - `MODEL_PROVIDER=ollama`
-   - `OLLAMA_BASE_URL=http://127.0.0.1:11434`
-   - `OLLAMA_MODEL=qwen2.5:7b-instruct`
-   - `EMBEDDING_MODEL=nomic-embed-text:latest`
-3) Build estático: `npm ci && npm run build`.
-4) Rode o server: `npm start` (serve `dist/` e proxy `/ollama`).
-5) (Opcional) Coloque Nginx na frente com TLS e reverse-proxy para `http://127.0.0.1:8080`.
+    ```env
+    # URL base da sua instância do Ollama
+    VITE_OLLAMA_BASE_URL=http://localhost:11434
 
-### Trecho Nginx (opcional)
-```
-server {
-  listen 80;
-  server_name app.seudominio.com;
+    # (Opcional) Nome do modelo do Ollama a ser usado
+    VITE_OLLAMA_MODEL=llama3:8b
+    ```
 
-  location / {
-    proxy_pass http://127.0.0.1:8080;
-  }
-}
+4.  **Inicie o servidor de desenvolvimento:**
+    ```bash
+    npm run dev
+    ```
 
-server {
-  listen 80;
-  server_name api.seudominio.com;
+    Abra [http://localhost:3000](http://localhost:3000) no seu navegador para ver o projeto.
 
-  location /ollama/ {
-    proxy_pass http://127.0.0.1:11434/;
-    proxy_set_header Host $host;
-  }
-}
-```
+## 🛠️ Tech Stack
+
+-   **Framework:** React 18
+-   **Linguagem:** TypeScript
+-   **Build Tool:** Vite
+-   **Estilização:** Tailwind CSS
+-   **IA Backend:** Ollama
+
+---
+*Este projeto foi refatorado com a assistência do Gemini CLI.*
