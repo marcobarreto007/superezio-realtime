@@ -3,9 +3,10 @@ import { useChat } from '@/hooks/useChat';
 import MessageBubble from './MessageBubble';
 import InputBar from './InputBar';
 import LoadingIndicator from './LoadingIndicator';
+import Header from './Header';
 
 const ChatWindow: React.FC = () => {
-  const { messages, isLoading, sendMessage } = useChat();
+  const { messages, isLoading, sendMessage, selectedModel, changeModel, clearConversation } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -18,6 +19,11 @@ const ChatWindow: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
+      <Header 
+        selectedModel={selectedModel} 
+        onModelChange={changeModel}
+        onClearConversation={clearConversation}
+      />
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
@@ -29,7 +35,7 @@ const ChatWindow: React.FC = () => {
         )}
         <div ref={messagesEndRef} />
       </div>
-      <InputBar onSendMessage={sendMessage} isLoading={isLoading} />
+      <InputBar onSendMessage={sendMessage} isLoading={isLoading} selectedModel={selectedModel} />
     </div>
   );
 };

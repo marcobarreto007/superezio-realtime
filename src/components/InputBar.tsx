@@ -1,17 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 interface InputBarProps {
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, model?: string) => void;
   isLoading: boolean;
+  selectedModel?: string;
 }
 
-const InputBar: React.FC<InputBarProps> = ({ onSendMessage, isLoading }) => {
+const InputBar: React.FC<InputBarProps> = ({ onSendMessage, isLoading, selectedModel }) => {
   const [text, setText] = useState('');
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
     if (text.trim() && !isLoading) {
-      onSendMessage(text);
+      onSendMessage(text, selectedModel);
       setText('');
     }
   };

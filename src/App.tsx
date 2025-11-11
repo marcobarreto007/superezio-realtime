@@ -1,5 +1,4 @@
 import React from 'react';
-import Header from '@/components/Header';
 import ChatWindow from '@/components/ChatWindow';
 
 function App() {
@@ -9,10 +8,7 @@ function App() {
       backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.1) 1px, transparent 0)',
       backgroundSize: '40px 40px'
     }}>
-      <Header />
-      <main className="flex-1 overflow-hidden">
-        <ChatWindow />
-      </main>
+      <ChatWindow />
     </div>
   );
 }

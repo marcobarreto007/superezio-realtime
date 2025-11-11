@@ -1,31 +1,43 @@
 import { getOllamaBaseUrl, getOllamaModel } from '@/config/env';
 import { Message } from '@/types';
+import { ragService } from './ragService';
+import { getWeather, getCryptoPrice, formatWeatherInfo, formatCryptoInfo } from './externalAPIs';
 
 const SYSTEM_PROMPT = `Você é SuperEzio, uma IA assistente com personalidade marcante.
 
 PERSONALIDADE E ESTILO:
-- Comunicação direta, coloquial e sem floreios, em português do Brasil
-- Levemente cético, pragmático e não bajula o usuário
-- Respostas objetivas, focadas e eficientes
-- Usa humor seco ocasionalmente, mas sem exageros
-- Não faz rodeios: vai direto ao ponto
+- Comunicação DIRETA, coloquial e sem floreios, em português do Brasil
+- Levemente cético, pragmático e NÃO bajula o usuário
+- Respostas OBJETIVAS, focadas e eficientes
+- NÃO faça perguntas casuais desnecessárias (clima, como está, etc)
+- NÃO seja excessivamente verboso ou empolgado
+- Vai direto ao ponto - sem rodeios
 - Quando não sabe algo, admite sem inventar
-- Prefere soluções práticas e funcionais sobre teorias complexas
+- Prefere soluções práticas sobre teorias
 
 CONTEXTO DO USUÁRIO:
 - Nome: Marco
 - Localização: Montréal, Canadá
-- Áreas de interesse: IA (Inteligência Artificial), trading (mercados financeiros)
-- Preferências técnicas: terminais de linha de comando (CMD), scripts, automação
-- Perfil: provavelmente valoriza eficiência, automação e soluções diretas
+- Áreas: IA, trading
+- Prefere: terminal, scripts, automação
+- Perfil técnico - não precisa de explicações básicas
 
 DIRETRIZES DE RESPOSTA:
-- Seja útil, mas não excessivamente empolgado
-- Quando apropriado, sugira comandos ou scripts se for relevante
-- Mantenha respostas concisas, mas completas
+- Seja útil e direto - sem conversa fiada
+- Para "oi" ou saudações simples, responda de forma breve e direta
+- NÃO pergunte sobre clima, como está o dia, etc - isso é desnecessário
+- Quando apropriado, sugira comandos ou scripts
+- Mantenha respostas CONCISAS
 - Se a pergunta for vaga, peça esclarecimento de forma direta
-- Evite formalidades desnecessárias - trate Marco como alguém que entende de tecnologia
-- Use exemplos práticos quando fizer sentido, especialmente relacionados a terminal/scripts`;
+- Trate Marco como alguém técnico que valoriza eficiência
+- Use exemplos práticos quando relevante, especialmente terminal/scripts
+
+EXEMPLOS:
+❌ EVITAR: "Olá Marco! Como está o clima lá no Canadá? Vendo as previsões, parece um pouco nebuloso hoje. Você gosta de dias nublados..."
+✅ CORRETO: "Oi. O que precisa?"
+
+❌ EVITAR: "Que prazer ajudá-lo! Vou te ensinar uma forma maravilhosa..."
+✅ CORRETO: "Pra isso, use \`comando\`. Se precisar de mais contexto, adiciona \`-flag\`."`;
 
 interface OllamaMessage {
   role: 'system' | 'user' | 'assistant';
@@ -43,15 +55,45 @@ interface OllamaResponse {
   done: boolean;
 }
 
-export const sendMessageToOllama = async (history: Message[]): Promise<string> => {
+export const sendMessageToOllama = async (history: Message[], modelOverride?: string): Promise<string> => {
   const baseUrl = getOllamaBaseUrl();
-  const model = getOllamaModel();
+  const model = modelOverride || getOllamaModel();
   const url = `${baseUrl}/api/chat`;
 
-  const userMessages = history.map((msg): OllamaMessage => ({
+  // Última mensagem do usuário
+  const lastUserMessage = history[history.length - 1];
+  
+  // Verificar se precisa de APIs externas
+  let enhancedMessage = lastUserMessage.content;
+  const lowerContent = lastUserMessage.content.toLowerCase();
+  
+  if (lowerContent.includes('clima') || lowerContent.includes('temperatura') || lowerContent.includes('weather')) {
+    const weather = await getWeather('Montreal');
+    if (weather) {
+      enhancedMessage += `\n\n[Info Clima]: ${formatWeatherInfo(weather)}`;
+    }
+  }
+  
+  if (lowerContent.includes('bitcoin') || lowerContent.includes('btc') || lowerContent.includes('cripto') || lowerContent.includes('crypto')) {
+    const crypto = await getCryptoPrice('BTC');
+    if (crypto) {
+      enhancedMessage += `\n\n[Info Cripto]: ${formatCryptoInfo(crypto)}`;
+    }
+  }
+
+  // RAG: buscar contexto relevante
+  const enhancedPrompt = await ragService.enhancePrompt(enhancedMessage, history);
+
+  const userMessages = history.slice(0, -1).map((msg): OllamaMessage => ({
     role: msg.role === 'user' ? 'user' : 'assistant',
     content: msg.content,
   }));
+
+  // Adicionar mensagem do usuário com contexto RAG
+  userMessages.push({
+    role: 'user',
+    content: enhancedPrompt,
+  });
 
   const payload: OllamaRequest = {
     model: model,
@@ -59,7 +101,7 @@ export const sendMessageToOllama = async (history: Message[]): Promise<string> =
       { role: 'system', content: SYSTEM_PROMPT },
       ...userMessages
     ],
-    stream: false, // As requested, no streaming for now
+    stream: false,
   };
 
   try {
@@ -77,7 +119,24 @@ export const sendMessageToOllama = async (history: Message[]): Promise<string> =
     }
 
     const data: OllamaResponse = await response.json();
-    return data.message.content;
+    const responseContent = data.message.content;
+    
+    // Salvar na memória RAG
+    if (lastUserMessage) {
+      await ragService.addToMemory(lastUserMessage);
+    }
+    if (data.message.content) {
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        author: 'SuperEzio',
+        content: responseContent,
+        timestamp: new Date().toISOString(),
+      };
+      await ragService.addToMemory(assistantMessage);
+    }
+    
+    return responseContent;
   } catch (error) {
     console.error('Error communicating with Ollama:', error);
     if (error instanceof Error) {
