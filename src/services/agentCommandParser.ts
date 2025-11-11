@@ -37,7 +37,24 @@ const detectIntent = (message: string): { intent: string; confidence: number } |
   
   // Intenções de busca
   if (lower.match(/\b(busc|procure|procura|encontr|find|search)\b/)) {
+    if (lower.includes('email') || lower.includes('e-mail') || lower.includes('correio')) {
+      return { intent: 'search_emails', confidence: 0.8 };
+    }
     return { intent: 'search_files', confidence: 0.7 };
+  }
+  
+  // Intenções de email
+  if (lower.includes('email') || lower.includes('e-mail') || lower.includes('correio') || lower.includes('mensagem')) {
+    if (lower.match(/\b(ler|leia|mostr|mostra|veja|ver|exibe|exibir|listar|lista)\b/)) {
+      return { intent: 'read_emails', confidence: 0.9 };
+    }
+    if (lower.match(/\b(busc|procure|procura|encontr|find|search)\b/)) {
+      return { intent: 'search_emails', confidence: 0.9 };
+    }
+    if (lower.match(/\b(não lido|unread|novo|novos)\b/)) {
+      return { intent: 'get_unread_count', confidence: 0.9 };
+    }
+    return { intent: 'read_emails', confidence: 0.7 };
   }
   
   // Intenções de agenda específicas
@@ -168,6 +185,28 @@ export const parseAgentCommand = (message: string): ParsedCommand | null => {
         return 'html'; // default
       },
     },
+    {
+      tool: 'read_emails',
+      triggers: ['ler email', 'ler emails', 'ler e-mail', 'mostrar email', 'listar email', 'emails', 'e-mails'],
+      extractLimit: (msg: string) => {
+        const limitMatch = msg.match(/(?:últimos|last|recentes|recent)[:\s]+(\d+)/i);
+        return limitMatch ? parseInt(limitMatch[1]) : 10;
+      },
+    },
+    {
+      tool: 'search_emails',
+      triggers: ['buscar email', 'procurar email', 'encontrar email', 'search email'],
+      extractQuery: (msg: string) => {
+        // Extrair query após "por", "de", "com", etc
+        const queryMatch = msg.match(/(?:por|de|com|about|from)[:\s]+([^\s]+)/i) ||
+                          msg.match(/"([^"]+)"/);
+        return queryMatch ? queryMatch[1] : null;
+      },
+    },
+    {
+      tool: 'get_unread_count',
+      triggers: ['emails não lidos', 'unread emails', 'novos emails', 'quantos emails'],
+    },
   ];
 
   // Se detectou intenção de agenda, criar comando específico
@@ -191,6 +230,46 @@ export const parseAgentCommand = (message: string): ParsedCommand | null => {
       parameters: {
         filePath: 'agenda.md',
       },
+      requiresConfirmation: false,
+      detected: true,
+    };
+  }
+  
+  // Se detectou intenção de ler emails
+  if (intent && intent.intent === 'read_emails') {
+    const limit = message.match(/(?:últimos|last|recentes|recent)[:\s]+(\d+)/i);
+    return {
+      tool: 'read_emails',
+      parameters: {
+        limit: limit ? parseInt(limit[1]) : 10,
+      },
+      requiresConfirmation: false,
+      detected: true,
+    };
+  }
+  
+  // Se detectou intenção de buscar emails
+  if (intent && intent.intent === 'search_emails') {
+    const queryMatch = message.match(/(?:por|de|com|about|from)[:\s]+([^\s]+)/i) ||
+                      message.match(/"([^"]+)"/);
+    if (queryMatch) {
+      return {
+        tool: 'search_emails',
+        parameters: {
+          query: queryMatch[1],
+          limit: 10,
+        },
+        requiresConfirmation: false,
+        detected: true,
+      };
+    }
+  }
+  
+  // Se detectou intenção de contar não lidos
+  if (intent && intent.intent === 'get_unread_count') {
+    return {
+      tool: 'get_unread_count',
+      parameters: {},
       requiresConfirmation: false,
       detected: true,
     };

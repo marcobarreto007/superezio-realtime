@@ -101,5 +101,45 @@ export const agentService = {
       return [];
     }
   },
+
+  // Ler emails
+  async readEmails(limit: number = 10, folder: string = 'INBOX'): Promise<any[]> {
+    try {
+      const response = await fetch(
+        `${AGENT_API_BASE}/emails/read?limit=${limit}&folder=${encodeURIComponent(folder)}`
+      );
+      const data = await response.json();
+      return data.result || [];
+    } catch (error) {
+      console.error('Error reading emails:', error);
+      return [];
+    }
+  },
+
+  // Buscar emails
+  async searchEmails(query: string, limit: number = 10): Promise<any[]> {
+    try {
+      const response = await fetch(
+        `${AGENT_API_BASE}/emails/search?query=${encodeURIComponent(query)}&limit=${limit}`
+      );
+      const data = await response.json();
+      return data.result || [];
+    } catch (error) {
+      console.error('Error searching emails:', error);
+      return [];
+    }
+  },
+
+  // Contar emails não lidos
+  async getUnreadCount(): Promise<number> {
+    try {
+      const response = await fetch(`${AGENT_API_BASE}/emails/unread`);
+      const data = await response.json();
+      return data.result?.unreadCount || 0;
+    } catch (error) {
+      console.error('Error getting unread count:', error);
+      return 0;
+    }
+  },
 };
 

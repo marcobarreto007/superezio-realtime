@@ -82,4 +82,36 @@ router.get('/files/list', async (req, res) => {
   res.json(result);
 });
 
+// Email endpoints
+router.get('/emails/read', async (req, res) => {
+  const { limit, folder } = req.query;
+  
+  const result = await executeTool('read_emails', {
+    limit: limit ? parseInt(limit) : 10,
+    folder: folder || 'INBOX',
+  }, true);
+
+  res.json(result);
+});
+
+router.get('/emails/search', async (req, res) => {
+  const { query, limit } = req.query;
+  
+  if (!query) {
+    return res.status(400).json({ error: 'query é obrigatório' });
+  }
+
+  const result = await executeTool('search_emails', {
+    query: query,
+    limit: limit ? parseInt(limit) : 10,
+  }, true);
+
+  res.json(result);
+});
+
+router.get('/emails/unread', async (req, res) => {
+  const result = await executeTool('get_unread_count', {}, true);
+  res.json(result);
+});
+
 export default router;

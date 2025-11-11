@@ -4,6 +4,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readEmails, searchEmails, getUnreadCount } from './emailService.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,24 @@ export const AVAILABLE_TOOLS = [
     description: 'Cria uma tabela HTML/CSV a partir de dados',
     parameters: { data: 'array', format: 'string (html|csv)', outputPath: 'string' },
     requiresConfirmation: true,
+  },
+  {
+    name: 'read_emails',
+    description: 'Lê emails recentes da caixa de entrada',
+    parameters: { limit: 'number (opcional, padrão: 10)', folder: 'string (opcional, padrão: INBOX)' },
+    requiresConfirmation: false,
+  },
+  {
+    name: 'search_emails',
+    description: 'Busca emails por assunto ou remetente',
+    parameters: { query: 'string', limit: 'number (opcional, padrão: 10)' },
+    requiresConfirmation: false,
+  },
+  {
+    name: 'get_unread_count',
+    description: 'Obtém quantidade de emails não lidos',
+    parameters: {},
+    requiresConfirmation: false,
   },
 ];
 
@@ -140,6 +159,22 @@ export async function executeTool(toolName, parameters = {}, confirmed = false) 
 
       case 'create_table':
         result = await createTable(parameters.data, parameters.format, parameters.outputPath);
+        break;
+
+      case 'read_emails':
+        result = await readEmails(parameters.limit || 10, parameters.folder || 'INBOX');
+        break;
+
+      case 'search_emails':
+        if (!parameters.query) {
+          result = { error: 'Parâmetro "query" é obrigatório' };
+        } else {
+          result = await searchEmails(parameters.query, parameters.limit || 10);
+        }
+        break;
+
+      case 'get_unread_count':
+        result = { unreadCount: await getUnreadCount() };
         break;
 
       default:

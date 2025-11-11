@@ -47,6 +47,9 @@ CAPACIDADES DO AGENTE (SUPER PODERES):
 - Pode BUSCAR arquivos por nome/padrão
 - Pode CRIAR TABELAS (HTML/CSV) a partir de dados
 - Pode CRIAR AGENDAS automaticamente quando solicitado
+- Pode LER EMAILS da caixa de entrada de Marco
+- Pode BUSCAR emails por assunto ou remetente
+- Pode CONTAR emails não lidos
 - Pode EXPORTAR para Google Sheets (quando configurado)
 - Todas as modificações requerem confirmação do usuário
 
@@ -55,8 +58,11 @@ LINGUAGEM NATURAL - ENTENDA INTENÇÕES:
 - Quando pedir "ler agenda" → LEIA agenda.md
 - Quando pedir "escrever" ou "criar" algo → ENTENDA o contexto e crie o arquivo
 - Quando mencionar um arquivo (ex: "package.json") → LEIA automaticamente se relevante
-- Seja PROATIVO: se Marco pedir algo que requer arquivo, execute a ação
-- Use linguagem natural: "escreva agenda" = criar agenda.md, "mostra arquivo X" = ler arquivo X
+- Quando pedir "ler emails" ou "mostrar emails" → LEIA emails recentes automaticamente
+- Quando pedir "buscar email por X" → BUSQUE emails por assunto/remetente
+- Quando pedir "quantos emails não lidos" → CONTE emails não lidos
+- Seja PROATIVO: se Marco pedir algo que requer arquivo ou email, execute a ação
+- Use linguagem natural: "escreva agenda" = criar agenda.md, "mostra emails" = ler emails
 
 DIRETRIZES DE RESPOSTA:
 - Seja útil e direto - sem conversa fiada
@@ -155,6 +161,22 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
       if (agendaContent) {
         agentContext += `\n\n[Agenda atual]:\n${agendaContent.substring(0, 2000)}`;
       }
+    }
+  }
+  
+  // Detectar intenção de email
+  if (lowerMessage.includes('email') || lowerMessage.includes('e-mail') || lowerMessage.includes('correio')) {
+    if (lowerMessage.match(/\b(ler|leia|mostr|mostra|veja|ver|listar|lista)\b/)) {
+      const limit = lowerMessage.match(/(?:últimos|last|recentes|recent)[:\s]+(\d+)/i);
+      const emails = await agentService.readEmails(limit ? parseInt(limit[1]) : 10);
+      if (emails && emails.length > 0) {
+        agentContext += `\n\n[Emails recentes (${emails.length}):\n${emails.map((e, i) => 
+          `${i + 1}. De: ${e.from}\n   Assunto: ${e.subject}\n   Data: ${e.date}\n   ${e.text?.substring(0, 200) || ''}`
+        ).join('\n\n')}]`;
+      }
+    } else if (lowerMessage.match(/\b(não lido|unread|novo|novos|quantos)\b/)) {
+      const count = await agentService.getUnreadCount();
+      agentContext += `\n\n[Emails não lidos: ${count}]`;
     }
   }
 
