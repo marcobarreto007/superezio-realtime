@@ -77,14 +77,15 @@ export const agentService = {
   },
 
   // Listar diretório
-  async listDirectory(dirPath: string): Promise<any[]> {
+  async listDirectory(dirPath: string): Promise<any> {
     try {
       const response = await fetch(`${AGENT_API_BASE}/files/list?path=${encodeURIComponent(dirPath)}`);
       const data = await response.json();
-      return data.result || [];
+      // Retornar o resultado completo (pode ser objeto ou array)
+      return data.result || null;
     } catch (error) {
       console.error('Error listing directory:', error);
-      return [];
+      return null;
     }
   },
 

@@ -168,12 +168,32 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
     if (dirMatch) {
       const dirPath = dirMatch[1];
       const dirContent = await agentService.listDirectory(dirPath);
-      if (dirContent && dirContent.length > 0) {
-        agentContext += `\n\n[Conteúdo do diretório ${dirPath}]:\n${dirContent.map((item: any) => 
+      
+      // Verificar se é objeto com formatted (novo formato) ou array (formato antigo)
+      if (dirContent && typeof dirContent === 'object') {
+        if (dirContent.formatted) {
+          // Novo formato: objeto com formatted
+          agentContext += `\n\n[DIRETÓRIO LISTADO - ${dirPath}]:\nTotal: ${dirContent.total || 0} itens\n\n${dirContent.formatted}`;
+        } else if (Array.isArray(dirContent.items) && dirContent.items.length > 0) {
+          // Formato com items array
+          agentContext += `\n\n[DIRETÓRIO LISTADO - ${dirPath}]:\nTotal: ${dirContent.total || dirContent.items.length} itens\n\n${dirContent.items.map((item: any) => 
+            `${item.type === 'directory' ? '📁' : '📄'} ${item.name} ${item.type === 'file' ? `(${item.size} bytes)` : ''}`
+          ).join('\n')}`;
+        } else if (Array.isArray(dirContent) && dirContent.length > 0) {
+          // Formato antigo: array direto
+          agentContext += `\n\n[DIRETÓRIO LISTADO - ${dirPath}]:\nTotal: ${dirContent.length} itens\n\n${dirContent.map((item: any) => 
+            `${item.type === 'directory' ? '📁' : '📄'} ${item.name} ${item.type === 'file' ? `(${item.size} bytes)` : ''}`
+          ).join('\n')}`;
+        } else {
+          agentContext += `\n\n[AVISO]: Diretório ${dirPath} está vazio ou não foi possível listar.`;
+        }
+      } else if (Array.isArray(dirContent) && dirContent.length > 0) {
+        // Array direto
+        agentContext += `\n\n[DIRETÓRIO LISTADO - ${dirPath}]:\nTotal: ${dirContent.length} itens\n\n${dirContent.map((item: any) => 
           `${item.type === 'directory' ? '📁' : '📄'} ${item.name} ${item.type === 'file' ? `(${item.size} bytes)` : ''}`
         ).join('\n')}`;
-      } else if (dirContent && dirContent.formatted) {
-        agentContext += `\n\n[Conteúdo do diretório ${dirPath}]:\n${dirContent.formatted}`;
+      } else {
+        agentContext += `\n\n[AVISO]: Diretório ${dirPath} está vazio ou não foi possível listar.`;
       }
     }
   }
