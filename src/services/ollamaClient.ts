@@ -160,6 +160,24 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
   const lowerMessage = enhancedMessage.toLowerCase();
   let agentContext = '';
   
+  // Detectar intenção de listar diretório
+  if (lowerMessage.match(/\b(listar|lista|mostrar|mostra|arquivos|files|pasta|diretorio|directory|folder)\b/)) {
+    const dirMatch = lowerMessage.match(/(?:pasta|diretorio|directory|folder|em|in)[:\s]+([^\s"']+)/i) ||
+                    lowerMessage.match(/(\.\/[^\s"']+)/) ||
+                    lowerMessage.match(/([A-Z]:[^\s"']+)/);
+    if (dirMatch) {
+      const dirPath = dirMatch[1];
+      const dirContent = await agentService.listDirectory(dirPath);
+      if (dirContent && dirContent.length > 0) {
+        agentContext += `\n\n[Conteúdo do diretório ${dirPath}]:\n${dirContent.map((item: any) => 
+          `${item.type === 'directory' ? '📁' : '📄'} ${item.name} ${item.type === 'file' ? `(${item.size} bytes)` : ''}`
+        ).join('\n')}`;
+      } else if (dirContent && dirContent.formatted) {
+        agentContext += `\n\n[Conteúdo do diretório ${dirPath}]:\n${dirContent.formatted}`;
+      }
+    }
+  }
+
   // Detectar menções de arquivos (linguagem natural) - MELHORADO
   const fileMentions = [
     // Padrões específicos primeiro

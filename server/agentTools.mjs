@@ -150,7 +150,21 @@ export async function executeTool(toolName, parameters = {}, confirmed = false) 
             };
           })
         );
-        result = details;
+        // Formatar resultado de forma clara
+        result = {
+          path: listPath,
+          total: details.length,
+          items: details.sort((a, b) => {
+            // Diretórios primeiro, depois arquivos
+            if (a.type !== b.type) {
+              return a.type === 'directory' ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+          }),
+          formatted: details.map(item => 
+            `${item.type === 'directory' ? '📁' : '📄'} ${item.name} ${item.type === 'file' ? `(${item.size} bytes)` : ''}`
+          ).join('\n')
+        };
         break;
 
       case 'create_directory':
