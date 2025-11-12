@@ -91,6 +91,14 @@ DIRETRIZES DE RESPOSTA:
 - Para perguntas sobre data, hora, eventos recentes → BUSQUE informações atualizadas
 - Use resultados de busca web para dar respostas precisas e atualizadas
 
+REGRA CRÍTICA - ARQUIVOS LIDOS:
+- Quando você ver [ARQUIVO LIDO - nome_arquivo] no contexto → USE O CONTEÚDO REAL DO ARQUIVO
+- NÃO INVENTE conteúdo de arquivos
+- NÃO ALUCINE dados que não estão no arquivo
+- Se o arquivo foi lido, MOSTRE O CONTEÚDO REAL, não invente
+- Se não conseguir ler o arquivo, diga honestamente "Não consegui ler o arquivo X"
+- NUNCA invente conteúdo de package.json, App.tsx ou qualquer arquivo
+
 EXEMPLOS:
 ❌ EVITAR: "Olá Marco! Como está o clima lá no Canadá? Vendo as previsões, parece um pouco nebuloso hoje. Você gosta de dias nublados..."
 ✅ CORRETO: "Oi. O que precisa?"
@@ -152,11 +160,16 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
   const lowerMessage = enhancedMessage.toLowerCase();
   let agentContext = '';
   
-  // Detectar menções de arquivos (linguagem natural)
+  // Detectar menções de arquivos (linguagem natural) - MELHORADO
   const fileMentions = [
-    /(?:ler|leia|mostr|mostra|abre|abrir|veja|ver|exibe|exibir)[:\s]+(?:arquivo|file|o)[:\s]+([^\s"']+)/i,
+    // Padrões específicos primeiro
+    /(?:ler|leia|mostr|mostra|abre|abrir|veja|ver|exibe|exibir|conteúdo|conteudo)[:\s]+(?:do|de|o|a)[:\s]+([^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
     /(?:arquivo|file)[:\s]+([^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
+    // Arquivos mencionados diretamente (package.json, App.tsx, etc)
+    /\b(package\.json|package-lock\.json|tsconfig\.json|vite\.config\.ts|App\.tsx|index\.tsx|README\.md|\.env\.local)\b/i,
+    // Caminhos absolutos
     /([A-Z]:[^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
+    // Caminhos relativos
     /(\.\/[^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
     /(\/[^\s"']+\.(txt|json|csv|js|ts|py|md|jsx|tsx|html|css))/i,
   ];
@@ -164,11 +177,16 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
   for (const pattern of fileMentions) {
     const match = enhancedMessage.match(pattern);
     if (match) {
-      const filePath = match[1];
-      const fileContent = await agentService.readFile(filePath);
-      if (fileContent) {
-        agentContext += `\n\n[Conteúdo do arquivo ${filePath}]:\n${fileContent.substring(0, 2000)}`;
-        break;
+      const filePath = match[1] || match[0]; // Pegar o arquivo mencionado
+      if (filePath) {
+        const fileContent = await agentService.readFile(filePath);
+        if (fileContent) {
+          agentContext += `\n\n[ARQUIVO LIDO - ${filePath}]:\n${fileContent.substring(0, 3000)}\n\n[FIM DO ARQUIVO ${filePath}]`;
+          break; // Só ler um arquivo por vez
+        } else {
+          // Se falhou, avisar
+          agentContext += `\n\n[AVISO]: Não consegui ler o arquivo ${filePath}. Verifique se o caminho está correto.`;
+        }
       }
     }
   }
