@@ -39,7 +39,7 @@ PROJECT_ROOT = BACKEND_DIR.parent.resolve()
 LOCAL_MODEL_DIR = PROJECT_ROOT / "models" / "qwen2.5-7b-instruct"
 
 # 🔥 MULTI-LORA: Suporte para múltiplos adaptadores
-LORA_PERSONALITY_DIR = PROJECT_ROOT / "models" / "lora_personality"  # 🎭 Personalidade
+LORA_PERSONALITY_DIR = PROJECT_ROOT / "models" / "lora_personality_v2"  # 🎭 Personalidade ANTI-OVERFIT
 LORA_ACCOUNTING_DIR = PROJECT_ROOT / "models" / "lora_accounting"    # 🇨🇦 Contabilidade
 LORA_LEGACY_DIR = PROJECT_ROOT / "models" / "lora_superezio"          # Legacy (antigo)
 

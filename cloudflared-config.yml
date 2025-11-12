@@ -1,0 +1,22 @@
+# Cloudflare Tunnel Config - SuperEzio Backend
+#
+# IMPORTANTE: Atualizar antes de usar:
+# 1. Substituir TUNNEL_ID pelo ID real do tunnel
+# 2. Substituir api.teudominio.com pelo domínio real
+
+tunnel: superezio
+credentials-file: C:\Users\marco\.cloudflared\TUNNEL_ID.json
+
+# Configurações de conexão
+ingress:
+  # Backend FastAPI (Python)
+  - hostname: api.teudominio.com
+    service: http://localhost:8000
+    originRequest:
+      noTLSVerify: true
+
+  # Catch-all: retorna 404 pra qualquer outro request
+  - service: http_status:404
+
+# Logs e métricas
+logDirectory: C:\Users\marco\Superezio Realtime\logs

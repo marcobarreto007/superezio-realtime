@@ -37,7 +37,7 @@ print()
 SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent.resolve()
 MODEL_PATH = PROJECT_ROOT / "models" / "qwen2.5-7b-instruct"
-DEFAULT_DATASET = PROJECT_ROOT / "data" / "cra_training.jsonl"  # �🇦 172 exemplos CONTABILIDADE PURA (para treinar lora_accounting)
+DEFAULT_DATASET = PROJECT_ROOT / "data" / "superezio_identity_balanced.jsonl"  # � 21 exemplos PERSONALIDADE
 PERSONA_DATASET = PROJECT_ROOT / "data" / "persona_superezio_full.jsonl"  # 🎭 110 exemplos personalidade
 CRA_DATASET = PROJECT_ROOT / "data" / "cra_training.jsonl"  # 🇨🇦 172 exemplos contabilidade
 LEGACY_DATASET = PROJECT_ROOT / "data" / "persona_superezio.jsonl"
@@ -50,7 +50,7 @@ elif DEFAULT_DATASET.exists():
 else:
     DATA_PATH = LEGACY_DATASET
 
-OUTPUT_DIR = PROJECT_ROOT / "models" / "lora_accounting"  # �🇦 Segundo LoRA: CONTABILIDADE PURA
+OUTPUT_DIR = PROJECT_ROOT / "models" / "lora_personality_v2"  # � RETREINAMENTO ANTI-OVERFIT
 LOG_DIR = PROJECT_ROOT / "logs" / "training"
 
 print(f"📁 Modelo base: {MODEL_PATH}")
@@ -121,17 +121,17 @@ print("✅ Modelo preparado para QLoRA")
 print()
 
 # Configuração LoRA OTIMIZADA para Qwen2.5-7B
-# Baseado em: https://github.com/QwenLM/Qwen2.5/blob/main/README.md
+# ANTI-OVERFIT: Mais dropout, menos rank para datasets pequenos
 print("⚡ Configurando LoRA adapter...")
 print("   📊 Parâmetros otimizados para Qwen2.5:")
-print("   • Rank (r): 32 (balanceado para 7B)")
-print("   • Alpha: 64 (2×rank)")
+print("   • Rank (r): 16 (reduzido para evitar overfit)")
+print("   • Alpha: 32 (2×rank)")
 print("   • Target modules: Query, Key, Value, Output, MLP")
-print("   • Dropout: 0.05 (regularização leve)")
+print("   • Dropout: 0.15 (ALTO para prevenir memorização)")
 
 lora_config = LoraConfig(
-    r=32,                          # Rank 32 - ideal para 7B models
-    lora_alpha=64,                 # Alpha = 2*r (recomendado)
+    r=16,                          # Rank 16 - menor para datasets pequenos
+    lora_alpha=32,                 # Alpha = 2*r (recomendado)
     target_modules=[               # Todos os módulos críticos do Qwen2.5
         "q_proj",                  # Query projection
         "k_proj",                  # Key projection
@@ -141,7 +141,7 @@ lora_config = LoraConfig(
         "up_proj",                 # MLP up
         "down_proj",               # MLP down
     ],
-    lora_dropout=0.05,             # Dropout leve para regularização
+    lora_dropout=0.15,             # Dropout ALTO para prevenir overfit
     bias="none",                   # Sem bias adicional
     task_type="CAUSAL_LM",
     inference_mode=False,
@@ -190,7 +190,7 @@ dataset = dataset.map(format_instruction)
 
 # Argumentos de treino OTIMIZADOS
 print("🎯 Configurando hyperparâmetros de treino...")
-print("   🔄 Épocas: 7 (dataset grande = menos épocas)")
+print("   🔄 Épocas: 5 (REDUZIDO para evitar overfit)")
 print("   📦 Batch size: 1 (ESTÁVEL - evita travamento)")
 print("   📈 Learning rate: 2e-4 (padrão QLoRA)")
 print("   📉 Scheduler: Cosine com warmup")
@@ -198,7 +198,7 @@ print("   💾 Checkpoint: A cada época")
 
 training_args = TrainingArguments(
     output_dir=str(OUTPUT_DIR),
-    num_train_epochs=7,                    # 7 épocas para dataset grande (172 exemplos)
+    num_train_epochs=5,                    # 5 épocas (anti-overfit)
     per_device_train_batch_size=1,         # Batch=1 ESTÁVEL
     gradient_accumulation_steps=8,         # Simula batch=8 (1x8)
     learning_rate=2e-4,                    # Learning rate padrão QLoRA
