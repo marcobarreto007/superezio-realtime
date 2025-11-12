@@ -126,10 +126,18 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
   let enhancedMessage = lastUserMessage.content;
   const lowerContent = lastUserMessage.content.toLowerCase();
   
-  if (lowerContent.includes('clima') || lowerContent.includes('temperatura') || lowerContent.includes('weather')) {
-    const weather = await getWeather('Montreal');
+  if (lowerContent.includes('clima') || lowerContent.includes('temperatura') || lowerContent.includes('weather') || 
+      lowerContent.includes('temperatura em') || lowerContent.includes('temperatura de')) {
+    // Extrair cidade se mencionada
+    const cityMatch = lowerContent.match(/(?:em|de|em|na|no)\s+([a-záàâãéêíóôõúç]+)/i);
+    const city = cityMatch ? cityMatch[1] : 'Montreal';
+    
+    const weather = await getWeather(city);
     if (weather) {
-      enhancedMessage += `\n\n[Info Clima]: ${formatWeatherInfo(weather)}`;
+      enhancedMessage += `\n\n[Info Clima REAL - ${weather.city}]: ${formatWeatherInfo(weather)}`;
+    } else {
+      // Se falhar, ser honesto
+      enhancedMessage += `\n\n[AVISO]: Não consegui buscar dados de clima para ${city}. A API pode estar temporariamente indisponível.`;
     }
   }
   

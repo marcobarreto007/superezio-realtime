@@ -14,22 +14,31 @@ export interface CryptoPrice {
 
 export const getWeather = async (city: string = 'Montreal'): Promise<WeatherData | null> => {
   try {
-    // Usando OpenWeatherMap (requer API key, mas vamos fazer fallback)
-    // Por enquanto, retornamos dados mockados ou fazemos requisição direta
+    // wttr.in - API gratuita de clima, sem necessidade de key
+    // Formato JSON: https://wttr.in/Montreal?format=j1
     const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=demo&units=metric`
-    ).catch(() => null);
+      `https://wttr.in/${encodeURIComponent(city)}?format=j1`,
+      { 
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json'
+        }
+      }
+    );
 
-    if (response?.ok) {
+    if (response.ok) {
       const data = await response.json();
-      return {
-        temp: data.main.temp,
-        description: data.weather[0].description,
-        city: data.name,
-      };
+      const current = data.current_condition?.[0];
+      
+      if (current) {
+        return {
+          temp: parseInt(current.temp_C) || 0,
+          description: current.weatherDesc?.[0]?.value || 'N/A',
+          city: data.nearest_area?.[0]?.areaName?.[0]?.value || city,
+        };
+      }
     }
 
-    // Fallback: retornar null (o SuperEzio pode informar que precisa de API key)
     return null;
   } catch (error) {
     console.error('Error fetching weather:', error);
