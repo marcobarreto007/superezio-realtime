@@ -195,18 +195,18 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
     }
   }
 
-  // Detectar necessidade de busca web
+  // Detectar necessidade de busca web (mais seletivo)
   let webSearchResults: string | undefined;
   const needsWebSearch = 
     lowerMessage.includes('que dia é') || 
     lowerMessage.includes('data atual') || 
     lowerMessage.includes('hoje é') ||
     lowerMessage.includes('que dia') ||
-    lowerMessage.match(/\b(quando|quando foi|quando aconteceu|recente|atual|hoje|agora)\b/) ||
-    lowerMessage.match(/\b(notícia|noticia|news|evento|acontecimento)\b/) ||
-    lowerMessage.match(/\b(não sei|não tenho certeza|preciso verificar|buscar|pesquisar)\b/);
+    lowerMessage.includes('que hora') ||
+    lowerMessage.includes('que data') ||
+    lowerMessage.match(/\b(quando foi|quando aconteceu|recente|atual|hoje|agora|notícia|noticia|news|evento|acontecimento)\b/);
   
-  if (needsWebSearch || !lowerMessage.match(/\b(arquivo|file|email|agenda|ler|escrever|criar)\b/)) {
+  if (needsWebSearch) {
     // Buscar na web para informações atualizadas
     try {
       const searchResponse = await searchWeb(enhancedMessage, 3);
