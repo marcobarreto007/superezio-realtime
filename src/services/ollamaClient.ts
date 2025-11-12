@@ -3,6 +3,7 @@ import { Message } from '@/types';
 import { ragService } from './ragService';
 import { getWeather, getCryptoPrice, formatWeatherInfo, formatCryptoInfo } from './externalAPIs';
 import { agentService } from './agentService';
+import { searchWeb, formatSearchResults } from './webSearch';
 
 const SYSTEM_PROMPT = `Você é SuperEzio, uma IA assistente com personalidade marcante.
 
@@ -50,8 +51,19 @@ CAPACIDADES DO AGENTE (SUPER PODERES):
 - Pode LER EMAILS da caixa de entrada de Marco
 - Pode BUSCAR emails por assunto ou remetente
 - Pode CONTAR emails não lidos
+- Pode BUSCAR NA INTERNET para informações atualizadas
+- Pode CONSULTAR a web quando não souber algo ou precisar de dados recentes
 - Pode EXPORTAR para Google Sheets (quando configurado)
 - Todas as modificações requerem confirmação do usuário
+
+ACESSO À INTERNET E BUSCA WEB:
+- Você TEM ACESSO à internet e pode buscar informações em tempo real
+- Quando NÃO SOUBER algo ou precisar de informações ATUALIZADAS → BUSQUE na internet automaticamente
+- Quando Marco perguntar sobre eventos recentes, notícias, dados atuais → BUSQUE na web
+- Quando perguntar "que dia é hoje", "data atual", "hora" → Use informações atualizadas
+- Quando perguntar sobre algo que pode ter mudado → BUSQUE para ter certeza
+- SEMPRE busque na internet se a informação não estiver na sua memória ou for sobre eventos recentes
+- Use os resultados da busca para dar respostas precisas e atualizadas
 
 LINGUAGEM NATURAL - ENTENDA INTENÇÕES:
 - Quando Marco pedir "agenda" ou "escrever agenda" → CRIE arquivo agenda.md automaticamente
@@ -75,6 +87,9 @@ DIRETRIZES DE RESPOSTA:
 - Use exemplos práticos quando relevante, especialmente terminal/scripts
 - Se precisar modificar arquivos, SEMPRE peça confirmação primeiro
 - Quando ler arquivos, seja objetivo e direto sobre o conteúdo
+- Quando NÃO SOUBER algo → BUSQUE na internet automaticamente antes de responder
+- Para perguntas sobre data, hora, eventos recentes → BUSQUE informações atualizadas
+- Use resultados de busca web para dar respostas precisas e atualizadas
 
 EXEMPLOS:
 ❌ EVITAR: "Olá Marco! Como está o clima lá no Canadá? Vendo as previsões, parece um pouco nebuloso hoje. Você gosta de dias nublados..."
@@ -180,8 +195,33 @@ export const sendMessageToOllama = async (history: Message[], modelOverride?: st
     }
   }
 
-  // RAG: buscar contexto relevante
-  const enhancedPrompt = await ragService.enhancePrompt(enhancedMessage + agentContext, history);
+  // Detectar necessidade de busca web
+  let webSearchResults: string | undefined;
+  const needsWebSearch = 
+    lowerMessage.includes('que dia é') || 
+    lowerMessage.includes('data atual') || 
+    lowerMessage.includes('hoje é') ||
+    lowerMessage.includes('que dia') ||
+    lowerMessage.match(/\b(quando|quando foi|quando aconteceu|recente|atual|hoje|agora)\b/) ||
+    lowerMessage.match(/\b(notícia|noticia|news|evento|acontecimento)\b/) ||
+    lowerMessage.match(/\b(não sei|não tenho certeza|preciso verificar|buscar|pesquisar)\b/);
+  
+  if (needsWebSearch || !lowerMessage.match(/\b(arquivo|file|email|agenda|ler|escrever|criar)\b/)) {
+    // Buscar na web para informações atualizadas
+    try {
+      const searchResponse = await searchWeb(enhancedMessage, 3);
+      if (searchResponse.results.length > 0) {
+        webSearchResults = formatSearchResults(searchResponse);
+        // Salvar busca na memória RAG
+        await ragService.addWebSearchToMemory(enhancedMessage, webSearchResults);
+      }
+    } catch (error) {
+      console.error('Web search error:', error);
+    }
+  }
+
+  // RAG: buscar contexto relevante (agora com busca web)
+  const enhancedPrompt = await ragService.enhancePrompt(enhancedMessage + agentContext, history, webSearchResults);
 
   const userMessages = history.slice(0, -1).map((msg): OllamaMessage => ({
     role: msg.role === 'user' ? 'user' : 'assistant',

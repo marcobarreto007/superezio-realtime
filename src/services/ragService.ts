@@ -37,20 +37,42 @@ export class RAGService {
     }
   }
 
-  async enhancePrompt(userMessage: string, conversationHistory: Message[]): Promise<string> {
+  async enhancePrompt(userMessage: string, conversationHistory: Message[], webSearchResults?: string): Promise<string> {
     // Buscar contexto relevante da memória
     const relevantContext = await this.searchRelevantContext(userMessage);
     
-    if (relevantContext.length === 0) {
-      return userMessage; // Sem contexto adicional
+    let enhancedMessage = userMessage;
+    
+    // Adicionar contexto da memória
+    if (relevantContext.length > 0) {
+      const contextText = relevantContext
+        .map((text, i) => `[Contexto Memória ${i + 1}]: ${text}`)
+        .join('\n\n');
+      enhancedMessage = `Contexto relevante de conversas anteriores:\n${contextText}\n\nPergunta atual: ${enhancedMessage}`;
     }
-
-    // Construir prompt aumentado
-    const contextText = relevantContext
-      .map((text, i) => `[Contexto ${i + 1}]: ${text}`)
-      .join('\n\n');
-
-    return `Contexto relevante de conversas anteriores:\n${contextText}\n\nPergunta atual: ${userMessage}`;
+    
+    // Adicionar resultados de busca web se disponíveis
+    if (webSearchResults) {
+      enhancedMessage += `\n\n${webSearchResults}`;
+    }
+    
+    return enhancedMessage;
+  }
+  
+  // Salvar resultados de busca web na memória
+  async addWebSearchToMemory(query: string, results: string): Promise<void> {
+    try {
+      const searchMemory: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        author: 'SuperEzio',
+        content: `[Busca Web] Query: ${query}\n\nResultados:\n${results}`,
+        timestamp: new Date().toISOString(),
+      };
+      await this.addToMemory(searchMemory);
+    } catch (error) {
+      console.error('Error saving web search to memory:', error);
+    }
   }
 }
 
