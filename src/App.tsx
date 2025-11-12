@@ -1,16 +1,51 @@
-import React from 'react';
-import ChatWindow from '@/components/ChatWindow';
+/**
+ * App SuperEzio
+ * Interface limpa e direta - reflete a personalidade
+ * Memória eterna + RAG + Streaming
+ */
 
-function App() {
+import { Sidebar } from './components/Sidebar'
+import { ChatWindow } from './components/ChatWindow'
+import { useChat } from './hooks/useChat'
+import { useEffect } from 'react'
+
+export default function App() {
+  console.log('🚀 [App] Componente montado')
+  
+  const {
+    conversations,
+    currentConversation,
+    isStreaming,
+    newConversation,
+    selectConversation,
+    deleteConversation,
+    sendMessage
+  } = useChat()
+
+  useEffect(() => {
+    console.log('📊 [App] Estado atualizado:')
+    console.log(`  - Conversas: ${conversations.length}`)
+    console.log(`  - Conversa atual: ${currentConversation?.id || 'nenhuma'}`)
+    console.log(`  - Streaming: ${isStreaming}`)
+  }, [conversations, currentConversation, isStreaming])
+
   return (
-    <div className="h-screen w-screen bg-gray-900 text-white flex flex-col" style={{ 
-      backgroundColor: '#0d1a26',
-      backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.1) 1px, transparent 0)',
-      backgroundSize: '40px 40px'
-    }}>
-      <ChatWindow />
-    </div>
-  );
-}
+    <div className="flex h-screen bg-gray-950 text-white">
+      {/* Sidebar */}
+      <Sidebar
+        conversations={conversations}
+        currentConversationId={currentConversation?.id || null}
+        onSelectConversation={selectConversation}
+        onNewConversation={newConversation}
+        onDeleteConversation={deleteConversation}
+      />
 
-export default App;
+      {/* Chat Window */}
+      <ChatWindow
+        conversation={currentConversation}
+        isStreaming={isStreaming}
+        onSendMessage={sendMessage}
+      />
+    </div>
+  )
+}

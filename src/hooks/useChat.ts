@@ -1,109 +1,222 @@
-import { useState, useEffect } from 'react';
-import { Message } from '@/types';
-import { sendMessageToOllama } from '@/services/ollamaClient';
-import { memoryDB } from '@/services/memoryDB';
-import { getOllamaModel } from '@/config/env';
+/**
+ * Hook useChat - Gerencia conversas, memória eterna e streaming
+ * Integrado com RAG para contexto
+ */
 
-const CONVERSATION_ID_KEY = 'superezio_conversation_id';
-const CURRENT_MODEL_KEY = 'superezio_current_model';
+import { useState, useEffect, useCallback } from 'react'
+import type { Conversation, Message, ChatState } from '../types/chat'
+import { memoryService } from '../services/memory'
+import { apiClient } from '../services/api'
+import { ragService } from '../services/ragService'
 
-export const useChat = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem(CURRENT_MODEL_KEY) || getOllamaModel();
-  });
-  const [conversationId] = useState<string>(() => {
-    let id = localStorage.getItem(CONVERSATION_ID_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(CONVERSATION_ID_KEY, id);
-    }
-    return id;
-  });
+export function useChat() {
+  const [state, setState] = useState<ChatState>({
+    conversations: [],
+    currentConversationId: null,
+    isLoading: false,
+    isStreaming: false
+  })
 
-  // Carregar conversa ao iniciar
+  console.log('🎣 [useChat] Hook inicializado')
+
+  // Inicializar memória e carregar conversas
   useEffect(() => {
-    const loadConversation = async () => {
-      try {
-        await memoryDB.init();
-        const savedMessages = await memoryDB.loadConversation(conversationId);
-        if (savedMessages && savedMessages.length > 0) {
-          setMessages(savedMessages);
+    console.log('🔄 [useChat] Efeito de inicialização executado')
+    
+    const init = async () => {
+      console.log('⚡ [useChat] Iniciando sistema...')
+      await memoryService.init()
+      const conversations = await memoryService.getAllConversations()
+
+      // Se não tem conversas, criar uma inicial
+      if (conversations.length === 0) {
+        console.log('📝 [useChat] Nenhuma conversa encontrada, criando inicial')
+        const initialConv: Conversation = {
+          id: `conv_${Date.now()}`,
+          title: 'Conversa Inicial',
+          messages: [{
+            id: `msg_${Date.now()}`,
+            role: 'assistant',
+            content: 'E aí! 👋 Quem é você? Fala aí pra eu saber com quem tô conversando!',
+            timestamp: Date.now()
+          }],
+          createdAt: Date.now(),
+          updatedAt: Date.now()
         }
-      } catch (error) {
-        console.error('Error loading conversation:', error);
+
+        await memoryService.saveConversation(initialConv)
+        conversations.push(initialConv)
+        console.log('✅ [useChat] Conversa inicial criada')
       }
-    };
-    loadConversation();
-  }, [conversationId]);
 
-  // Salvar conversa quando mudar
-  useEffect(() => {
-    if (messages.length > 0) {
-      memoryDB.saveConversation(conversationId, messages).catch(console.error);
+      console.log(`📚 [useChat] ${conversations.length} conversas carregadas`)
+      setState(prev => ({
+        ...prev,
+        conversations,
+        currentConversationId: conversations[0]?.id || null
+      }))
+      console.log('✅ [useChat] Sistema pronto!')
     }
-  }, [messages, conversationId]);
+    init()
+  }, [])
 
-  const sendMessage = async (text: string, model?: string) => {
-    if (!text.trim()) return;
+  const currentConversation = state.conversations.find(
+    c => c.id === state.currentConversationId
+  )
+
+  // Nova conversa
+  const newConversation = useCallback(() => {
+    const conversation: Conversation = {
+      id: `conv_${Date.now()}`,
+      title: 'Nova Conversa',
+      messages: [{
+        id: `msg_${Date.now()}`,
+        role: 'assistant',
+        content: 'E aí! Quem é você?',
+        timestamp: Date.now()
+      }],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
+
+    setState(prev => ({
+      ...prev,
+      conversations: [conversation, ...prev.conversations],
+      currentConversationId: conversation.id
+    }))
+
+    memoryService.saveConversation(conversation)
+  }, [])
+
+  // Selecionar conversa
+  const selectConversation = useCallback((id: string) => {
+    setState(prev => ({
+      ...prev,
+      currentConversationId: id
+    }))
+  }, [])
+
+  // Deletar conversa
+  const deleteConversation = useCallback(async (id: string) => {
+    await memoryService.deleteConversation(id)
+    setState(prev => {
+      const filtered = prev.conversations.filter(c => c.id !== id)
+      return {
+        ...prev,
+        conversations: filtered,
+        currentConversationId: prev.currentConversationId === id
+          ? filtered[0]?.id || null
+          : prev.currentConversationId
+      }
+    })
+  }, [])
+
+  // Enviar mensagem com streaming
+  const sendMessage = useCallback(async (content: string) => {
+    let convId = state.currentConversationId
+    if (!convId) {
+      newConversation()
+      // Aguardar um tick para pegar o ID da nova conversa
+      await new Promise(resolve => setTimeout(resolve, 10))
+      convId = state.currentConversationId!
+    }
 
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: `msg_${Date.now()}`,
       role: 'user',
-      author: 'Marco',
-      content: text,
-      timestamp: new Date().toISOString(),
-    };
+      content,
+      timestamp: Date.now()
+    }
 
-    // Pass the state updater function to ensure we're using the latest state
-    setMessages(prevMessages => [...prevMessages, userMessage]);
-    setIsLoading(true);
+    // Adicionar ao RAG
+    ragService.addToMemory(content)
+    const ragContext = ragService.searchMemory(content, 5).map(m => m.content)
+
+    // Adicionar mensagem do usuário
+    setState(prev => ({
+      ...prev,
+      conversations: prev.conversations.map(c =>
+        c.id === convId
+          ? { ...c, messages: [...c.messages, userMessage], updatedAt: Date.now() }
+          : c
+      ),
+      isStreaming: true
+    }))
 
     try {
-      const modelToUse = model || selectedModel;
-      const botResponseContent = await sendMessageToOllama([...messages, userMessage], modelToUse);
+      const conversation = state.conversations.find(c => c.id === convId)!
+      const messages = [...conversation.messages, userMessage]
 
-      const botMessage: Message = {
-        id: crypto.randomUUID(),
+      const assistantMessage: Message = {
+        id: `msg_${Date.now() + 1}`,
         role: 'assistant',
-        author: 'SuperEzio',
-        content: botResponseContent,
-        timestamp: new Date().toISOString(),
-      };
+        content: '',
+        timestamp: Date.now(),
+        ragContext
+      }
 
-      setMessages(prevMessages => [...prevMessages, botMessage]);
+      setState(prev => ({
+        ...prev,
+        conversations: prev.conversations.map(c =>
+          c.id === convId
+            ? { ...c, messages: [...c.messages, assistantMessage] }
+            : c
+        )
+      }))
+
+      let fullContent = ''
+
+      for await (const chunk of apiClient.chatStream(messages)) {
+        fullContent += chunk
+
+        setState(prev => ({
+          ...prev,
+          conversations: prev.conversations.map(c =>
+            c.id === convId
+              ? {
+                  ...c,
+                  messages: c.messages.map(m =>
+                    m.id === assistantMessage.id
+                      ? { ...m, content: fullContent }
+                      : m
+                  )
+                }
+              : c
+          )
+        }))
+      }
+
+      // Adicionar resposta ao RAG
+      ragService.addToMemory(fullContent)
+
+      setState(prev => ({ ...prev, isStreaming: false }))
+
+      // Salvar na memória eterna
+      const finalConv = state.conversations.find(c => c.id === convId)!
+      const title = finalConv.messages.length === 3 // 1 inicial + 1 user + 1 assistant
+        ? content.substring(0, 50)
+        : finalConv.title
+
+      await memoryService.saveConversation({
+        ...finalConv,
+        title,
+        updatedAt: Date.now()
+      })
+
     } catch (error) {
-      console.error("Failed to get response from bot:", error);
-      const errorMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        author: 'SuperEzio',
-        content: "Desculpe, não consegui processar sua mensagem. Tente novamente.",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages(prevMessages => [...prevMessages, errorMessage]);
-    } finally {
-      setIsLoading(false);
+      console.error('Erro no streaming:', error)
+      setState(prev => ({ ...prev, isStreaming: false }))
     }
-  };
-
-  const changeModel = (model: string) => {
-    setSelectedModel(model);
-    localStorage.setItem(CURRENT_MODEL_KEY, model);
-  };
-
-  const clearConversation = () => {
-    setMessages([]);
-    memoryDB.saveConversation(conversationId, []).catch(console.error);
-  };
+  }, [state.currentConversationId, state.conversations, newConversation])
 
   return {
-    messages,
-    isLoading,
-    sendMessage,
-    selectedModel,
-    changeModel,
-    clearConversation,
-  };
-};
+    conversations: state.conversations,
+    currentConversation,
+    isLoading: state.isLoading,
+    isStreaming: state.isStreaming,
+    newConversation,
+    selectConversation,
+    deleteConversation,
+    sendMessage
+  }
+}

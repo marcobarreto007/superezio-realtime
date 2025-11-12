@@ -1,80 +1,53 @@
-// Serviço RAG - Recuperação Aumentada por Geração
-// Combina embeddings com busca semântica para memória de longo prazo
+﻿import type { Message, MemoryEntry } from '../types';
 
-import { generateEmbedding, cosineSimilarity } from './embeddings';
-import { memoryDB } from './memoryDB';
-import { Message } from '@/types';
+class RAGService {
+  private memory: MemoryEntry[] = [];
+  private readonly MAX_MEMORY = 50;
 
-export class RAGService {
-  async addToMemory(message: Message): Promise<void> {
-    try {
-      const embedding = await generateEmbedding(message.content);
-      
-      await memoryDB.saveMemory({
-        id: message.id,
-        embedding,
-        text: message.content,
-        role: message.role,
-        timestamp: message.timestamp,
-        metadata: {
-          author: message.author,
-        },
-      });
-    } catch (error) {
-      console.error('Error adding to memory:', error);
+  constructor() {
+    console.log('🧠 [RAG] Serviço inicializado')
+    console.log(`📊 [RAG] Capacidade máxima: ${this.MAX_MEMORY} entradas`)
+  }
+
+  addToMemory(content: string): void {
+    this.memory.push({ content, timestamp: Date.now() });
+    console.log(`➕ [RAG] Adicionado à memória (${this.memory.length}/${this.MAX_MEMORY})`)
+    
+    if (this.memory.length > this.MAX_MEMORY) {
+      this.memory = this.memory.slice(-this.MAX_MEMORY);
+      console.log(`🗑️  [RAG] Memória trimada para ${this.MAX_MEMORY} entradas`)
     }
   }
 
-  async searchRelevantContext(query: string, limit: number = 3): Promise<string[]> {
-    try {
-      const queryEmbedding = await generateEmbedding(query);
-      const relevantMemories = await memoryDB.searchSimilar(queryEmbedding, limit);
-      
-      return relevantMemories.map(m => m.text);
-    } catch (error) {
-      console.error('Error searching context:', error);
-      return [];
-    }
+  searchMemory(query: string, limit: number = 5): MemoryEntry[] {
+    console.log(`🔍 [RAG] Buscando: "${query.substring(0, 50)}..."`)
+    
+    const queryLower = query.toLowerCase();
+    const results = this.memory
+      .map(entry => {
+        const words = queryLower.split(' ').filter(w => w.length > 3);
+        const matches = words.filter(w => entry.content.toLowerCase().includes(w)).length;
+        const relevance = matches / words.length;
+        return { ...entry, relevance };
+      })
+      .filter(e => (e.relevance || 0) > 0.3)
+      .sort((a, b) => (b.relevance || 0) - (a.relevance || 0))
+      .slice(0, limit);
+    
+    console.log(`✅ [RAG] ${results.length} resultados encontrados`)
+    return results;
   }
 
-  async enhancePrompt(userMessage: string, conversationHistory: Message[], webSearchResults?: string): Promise<string> {
-    // Buscar contexto relevante da memória
-    const relevantContext = await this.searchRelevantContext(userMessage);
-    
-    let enhancedMessage = userMessage;
-    
-    // Adicionar contexto da memória
-    if (relevantContext.length > 0) {
-      const contextText = relevantContext
-        .map((text, i) => `[Contexto Memória ${i + 1}]: ${text}`)
-        .join('\n\n');
-      enhancedMessage = `Contexto relevante de conversas anteriores:\n${contextText}\n\nPergunta atual: ${enhancedMessage}`;
-    }
-    
-    // Adicionar resultados de busca web se disponíveis
-    if (webSearchResults) {
-      enhancedMessage += `\n\n${webSearchResults}`;
-    }
-    
-    return enhancedMessage;
+  enhancePrompt(userMessage: string): string {
+    const memories = this.searchMemory(userMessage, 3);
+    if (memories.length === 0) return userMessage;
+    const context = memories.map(m => m.content).join('\n\n');
+    return `[CONTEXTO]:\n${context}\n\n[PERGUNTA]:\n${userMessage}`;
   }
-  
-  // Salvar resultados de busca web na memória
-  async addWebSearchToMemory(query: string, results: string): Promise<void> {
-    try {
-      const searchMemory: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        author: 'SuperEzio',
-        content: `[Busca Web] Query: ${query}\n\nResultados:\n${results}`,
-        timestamp: new Date().toISOString(),
-      };
-      await this.addToMemory(searchMemory);
-    } catch (error) {
-      console.error('Error saving web search to memory:', error);
-    }
+
+  clearMemory(): void {
+    this.memory = [];
   }
 }
 
 export const ragService = new RAGService();
-

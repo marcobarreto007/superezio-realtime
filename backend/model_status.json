@@ -1,0 +1,7 @@
+{
+  "status": "ready",
+  "error": null,
+  "timestamp": 1762916842.57307,
+  "model_path": "C:\\Users\\marco\\Superezio Realtime\\models\\qwen2.5-7b-instruct",
+  "device": "cuda"
+}

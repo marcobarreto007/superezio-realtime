@@ -1,8 +1,8 @@
 # SuperEzio Realtime
 
-Um frontend de chat moderno, limpo e responsivo, construído para interagir com modelos de linguagem rodando via Ollama.
+Um frontend de chat moderno, limpo e responsivo, construído para interagir com o modelo Qwen2.5-7B-Instruct rodando 100% local via Hugging Face.
 
-Este projeto foi completamente reestruturado para ter uma arquitetura clara, uma interface de usuário moderna e uma integração simplificada com a API do Ollama.
+Este projeto foi completamente reestruturado para ter uma arquitetura clara, uma interface de usuário moderna e uma integração com backend Python FastAPI para inferência GPU local.
 
 ## ✨ Features
 
@@ -28,16 +28,8 @@ Este projeto foi completamente reestruturado para ter uma arquitetura clara, uma
     ```
 
 3.  **Configure as variáveis de ambiente:**
-    -   Crie um arquivo chamado `.env.local` na raiz do projeto.
-    -   Adicione as seguintes variáveis:
-
-    ```env
-    # URL base da sua instância do Ollama
-    VITE_OLLAMA_BASE_URL=http://localhost:11434
-
-    # (Opcional) Nome do modelo do Ollama a ser usado
-    VITE_OLLAMA_MODEL=llama3:8b
-    ```
+    -   Não é mais necessário configurar `.env.local`
+    -   O backend Python usa o modelo local em `models/qwen2.5-7b-instruct/`
 
 4.  **Inicie o servidor de desenvolvimento:**
     ```bash
@@ -52,7 +44,7 @@ Este projeto foi completamente reestruturado para ter uma arquitetura clara, uma
 -   **Linguagem:** TypeScript
 -   **Build Tool:** Vite
 -   **Estilização:** Tailwind CSS
--   **IA Backend:** Ollama
+-   **IA Backend:** Python FastAPI + Hugging Face Transformers (Qwen2.5-7B-Instruct)
 
 ---
 *Este projeto foi refatorado com a assistência do Gemini CLI.*
