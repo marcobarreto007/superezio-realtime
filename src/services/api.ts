@@ -5,7 +5,10 @@
 
 import type { ChatRequest, ChatResponse, Message } from '../types/chat'
 
-const API_BASE = '/api' // Proxy via Express (porta 8080)
+// Usar env var em produção, fallback pra proxy local em dev
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api/hf`
+  : '/api/hf' // Dev local: Proxy via Express (porta 8080) -> Python (porta 8000)
 
 class APIClient {
   constructor() {
