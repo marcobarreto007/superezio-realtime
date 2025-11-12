@@ -9,6 +9,25 @@ import { readEmails, searchEmails, getUnreadCount } from './emailService.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Diretório raiz do projeto SuperEzio Realtime
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+
+// Normalizar caminho para sempre ser relativo ao projeto
+function normalizePath(filePath) {
+  // Se for caminho absoluto, usar como está
+  if (path.isAbsolute(filePath)) {
+    return filePath;
+  }
+  
+  // Se começar com ./, remover o ./
+  if (filePath.startsWith('./')) {
+    filePath = filePath.substring(2);
+  }
+  
+  // Resolver relativo ao diretório do projeto
+  return path.resolve(PROJECT_ROOT, filePath);
+}
+
 export const AVAILABLE_TOOLS = [
   {
     name: 'read_file',
