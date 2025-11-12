@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import compression from 'compression';
-import agentRoutes from './server/agentRoutes.js';
+import agentRoutes from './server/agentRoutes.mjs';
 
 // Basic CORS for browser calls from remote origins
 function cors(req, res, next) {
