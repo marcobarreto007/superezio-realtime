@@ -105,20 +105,23 @@ export async function executeTool(toolName, parameters = {}, confirmed = false) 
 
     switch (toolName) {
       case 'read_file':
-        result = await fs.readFile(parameters.filePath, 'utf-8');
+        const readPath = normalizePath(parameters.filePath);
+        result = await fs.readFile(readPath, 'utf-8');
         break;
 
       case 'write_file':
-        await fs.ensureDir(path.dirname(parameters.filePath));
-        await fs.writeFile(parameters.filePath, parameters.content, 'utf-8');
-        result = { success: true, message: `Arquivo escrito: ${parameters.filePath}` };
+        const writePath = normalizePath(parameters.filePath);
+        await fs.ensureDir(path.dirname(writePath));
+        await fs.writeFile(writePath, parameters.content, 'utf-8');
+        result = { success: true, message: `Arquivo escrito: ${writePath}` };
         break;
 
       case 'list_directory':
-        const items = await fs.readdir(parameters.dirPath);
+        const listPath = normalizePath(parameters.dirPath);
+        const items = await fs.readdir(listPath);
         const details = await Promise.all(
           items.map(async (item) => {
-            const itemPath = path.join(parameters.dirPath, item);
+            const itemPath = path.join(listPath, item);
             const stats = await fs.stat(itemPath);
             return {
               name: item,
@@ -132,23 +135,27 @@ export async function executeTool(toolName, parameters = {}, confirmed = false) 
         break;
 
       case 'create_directory':
-        await fs.ensureDir(parameters.dirPath);
-        result = { success: true, message: `Diretório criado: ${parameters.dirPath}` };
+        const createPath = normalizePath(parameters.dirPath);
+        await fs.ensureDir(createPath);
+        result = { success: true, message: `Diretório criado: ${createPath}` };
         break;
 
       case 'delete_file':
-        await fs.remove(parameters.filePath);
-        result = { success: true, message: `Arquivo deletado: ${parameters.filePath}` };
+        const deletePath = normalizePath(parameters.filePath);
+        await fs.remove(deletePath);
+        result = { success: true, message: `Arquivo deletado: ${deletePath}` };
         break;
 
       case 'search_files':
-        result = await searchFilesRecursive(parameters.searchPath, parameters.pattern);
+        const searchPath = normalizePath(parameters.searchPath);
+        result = await searchFilesRecursive(searchPath, parameters.pattern);
         break;
 
       case 'get_file_info':
-        const stats = await fs.stat(parameters.filePath);
+        const infoPath = normalizePath(parameters.filePath);
+        const stats = await fs.stat(infoPath);
         result = {
-          path: parameters.filePath,
+          path: infoPath,
           size: stats.size,
           created: stats.birthtime.toISOString(),
           modified: stats.mtime.toISOString(),
@@ -201,6 +208,7 @@ export async function executeTool(toolName, parameters = {}, confirmed = false) 
 async function searchFilesRecursive(dirPath, pattern) {
   const results = [];
   const regex = new RegExp(pattern, 'i');
+  const normalizedDir = normalizePath(dirPath);
 
   async function search(currentPath) {
     try {
@@ -212,7 +220,9 @@ async function searchFilesRecursive(dirPath, pattern) {
         if (stats.isDirectory()) {
           await search(itemPath);
         } else if (regex.test(item)) {
-          results.push(itemPath);
+          // Retornar caminho relativo ao projeto
+          const relativePath = path.relative(PROJECT_ROOT, itemPath);
+          results.push(relativePath);
         }
       }
     } catch (error) {
@@ -220,7 +230,7 @@ async function searchFilesRecursive(dirPath, pattern) {
     }
   }
 
-  await search(dirPath);
+  await search(normalizedDir);
   return results;
 }
 
