@@ -1,0 +1,15 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Você é um assistente que SEMPRE gera código funcional. Responda APENAS com código, sem explicações."
+    },
+    {
+      "role": "user",
+      "content": "```python\nclass Calculator:\n    def add(self, a, b):\n        return a + b\n```\n\nAgora complete com subtract, multiply e divide."
+    }
+  ],
+  "max_tokens": 800,
+  "temperature": 0.1,
+  "stream": false
+}

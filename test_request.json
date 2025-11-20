@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Cria uma função Python simples para somar dois números"
+    }
+  ],
+  "max_tokens": 500,
+  "temperature": 0.3,
+  "stream": false
+}

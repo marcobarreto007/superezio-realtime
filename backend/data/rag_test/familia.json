@@ -1,0 +1,46 @@
+[
+  {
+    "id": "familia_20251112_224237_0",
+    "text": "Ana Paula é a mãe do Rapha",
+    "tags": [
+      "ana",
+      "familia"
+    ],
+    "metadata": {},
+    "timestamp": "2025-11-12T22:42:37.005444",
+    "namespace": "familia"
+  },
+  {
+    "id": "familia_20251112_224237_1",
+    "text": "Rapha estuda na UdeM em Montreal",
+    "tags": [
+      "rapha",
+      "educacao"
+    ],
+    "metadata": {},
+    "timestamp": "2025-11-12T22:42:37.006451",
+    "namespace": "familia"
+  },
+  {
+    "id": "familia_20251112_224242_2",
+    "text": "Ana Paula é a mãe do Rapha",
+    "tags": [
+      "ana",
+      "familia"
+    ],
+    "metadata": {},
+    "timestamp": "2025-11-12T22:42:42.128678",
+    "namespace": "familia"
+  },
+  {
+    "id": "familia_20251112_224242_3",
+    "text": "Rapha estuda na UdeM em Montreal",
+    "tags": [
+      "rapha",
+      "educacao"
+    ],
+    "metadata": {},
+    "timestamp": "2025-11-12T22:42:42.130679",
+    "namespace": "familia"
+  }
+]

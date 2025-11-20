@@ -1,0 +1,112 @@
+{
+  "type": "datasets",
+  "created_at": "2025-11-13T20:45:16.267740",
+  "count": 5,
+  "items": [
+    {
+      "id": "livecodebench/code_generation_lite",
+      "author": "livecodebench",
+      "downloads": 69784,
+      "likes": 74,
+      "tags": [
+        "license:cc",
+        "size_categories:n<1K",
+        "arxiv:2403.07974",
+        "region:us",
+        "code",
+        "code generation"
+      ],
+      "created_at": "2024-04-16 04:46:53+00:00",
+      "last_modified": "2025-06-05 17:18:27+00:00"
+    },
+    {
+      "id": "codeparrot/codeparrot-clean",
+      "author": "codeparrot",
+      "downloads": 8897,
+      "likes": 75,
+      "tags": [
+        "size_categories:1M<n<10M",
+        "format:json",
+        "modality:tabular",
+        "modality:text",
+        "library:datasets",
+        "library:dask",
+        "library:mlcroissant",
+        "region:us",
+        "python",
+        "code"
+      ],
+      "created_at": "2022-03-02 23:29:22+00:00",
+      "last_modified": "2022-10-10 15:23:51+00:00"
+    },
+    {
+      "id": "ByteDance-Seed/Code-Contests-Plus",
+      "author": "ByteDance-Seed",
+      "downloads": 7636,
+      "likes": 43,
+      "tags": [
+        "task_categories:other",
+        "license:cc-by-4.0",
+        "size_categories:10K<n<100K",
+        "format:parquet",
+        "modality:tabular",
+        "modality:text",
+        "library:datasets",
+        "library:dask",
+        "library:mlcroissant",
+        "library:polars",
+        "arxiv:2506.05817",
+        "region:us",
+        "code"
+      ],
+      "created_at": "2025-06-03 07:36:17+00:00",
+      "last_modified": "2025-11-06 17:06:30+00:00"
+    },
+    {
+      "id": "tokyotech-llm/swallow-code-v2",
+      "author": "tokyotech-llm",
+      "downloads": 7599,
+      "likes": 17,
+      "tags": [
+        "task_categories:text-generation",
+        "language:en",
+        "license:apache-2.0",
+        "size_categories:100M<n<1B",
+        "format:json",
+        "modality:tabular",
+        "modality:text",
+        "library:datasets",
+        "library:dask",
+        "library:mlcroissant",
+        "arxiv:2505.02881",
+        "arxiv:2506.03524",
+        "region:us",
+        "code"
+      ],
+      "created_at": "2025-10-20 04:41:53+00:00",
+      "last_modified": "2025-11-08 01:27:37+00:00"
+    },
+    {
+      "id": "sahil2801/CodeAlpaca-20k",
+      "author": "sahil2801",
+      "downloads": 5061,
+      "likes": 214,
+      "tags": [
+        "task_categories:text-generation",
+        "language:en",
+        "license:cc-by-4.0",
+        "size_categories:10K<n<100K",
+        "format:json",
+        "modality:text",
+        "library:datasets",
+        "library:pandas",
+        "library:mlcroissant",
+        "library:polars",
+        "region:us",
+        "code"
+      ],
+      "created_at": "2023-03-26 22:09:47+00:00",
+      "last_modified": "2023-10-03 11:46:04+00:00"
+    }
+  ]
+}

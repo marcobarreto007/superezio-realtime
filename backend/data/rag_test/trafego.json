@@ -1,0 +1,24 @@
+[
+  {
+    "id": "trafego_20251112_224237_0",
+    "text": "MIovision usa câmeras para detectar veículos",
+    "tags": [
+      "miovision",
+      "camera"
+    ],
+    "metadata": {},
+    "timestamp": "2025-11-12T22:42:37.008454",
+    "namespace": "trafego"
+  },
+  {
+    "id": "trafego_20251112_224242_1",
+    "text": "MIovision usa câmeras para detectar veículos",
+    "tags": [
+      "miovision",
+      "camera"
+    ],
+    "metadata": {},
+    "timestamp": "2025-11-12T22:42:42.134581",
+    "namespace": "trafego"
+  }
+]

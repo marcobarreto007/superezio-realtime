@@ -1,0 +1,369 @@
+{
+  "entities": [
+    {
+      "id": "person_marco",
+      "name": "Marco Barreto",
+      "type": "person",
+      "properties": {
+        "age": 51,
+        "location": "Montréal, QC, Canada",
+        "origin": "Brasil",
+        "team": "Fluminense",
+        "creator_of": "SuperEzio"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "person_ana_paula",
+      "name": "Ana Paula",
+      "type": "person",
+      "properties": {
+        "role": "Analista Júnior ONF/NFB",
+        "previous": "Dentista (Brasil)",
+        "location": "Montréal"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "person_rapha",
+      "name": "Rapha",
+      "type": "person",
+      "properties": {
+        "university": "Université de Montréal",
+        "program": "Ciências Políticas",
+        "goal": "Direito",
+        "grades": "A/A+",
+        "interests": [
+          "LoL",
+          "MMA",
+          "PS5",
+          "cultura japonesa"
+        ],
+        "sports": [
+          "hóquei (Edmonton Oilers)",
+          "futebol (Real Madrid)"
+        ]
+      },
+      "metadata": {}
+    },
+    {
+      "id": "person_alice",
+      "name": "Alice",
+      "type": "person",
+      "properties": {
+        "school": "Sec 3",
+        "interests": [
+          "bossa nova japonesa",
+          "Hello Kitty"
+        ],
+        "talent": "Saxofone",
+        "goal": "Dentista"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "person_mike",
+      "name": "Mike",
+      "type": "person",
+      "properties": {
+        "type": "Yorke",
+        "trait": "barulhento"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "person_matheus",
+      "name": "Matheus",
+      "type": "person",
+      "properties": {
+        "relation": "Irmão da Ana Paula",
+        "location": "Brasil",
+        "trait": "autista",
+        "family_goal": "Trazer para Canadá"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "project_superezio",
+      "name": "SuperEzio",
+      "type": "project",
+      "properties": {
+        "type": "Mini-AGI",
+        "description": "Chatbot com personalidade própria",
+        "status": "ativo"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "project_trafficai",
+      "name": "TrafficAI",
+      "type": "project",
+      "properties": {
+        "type": "Análise de tráfego",
+        "tech": "YOLO, RT-DETR, ByteTrack",
+        "goal": "Competir com Miovision"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "project_bebe_ia",
+      "name": "BEBE-IA",
+      "type": "project",
+      "properties": {
+        "type": "Trading algorítmico",
+        "tech": "Genetic + CMA-ES + CNN/GRU"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "project_xubudget",
+      "name": "Xubudget",
+      "type": "project",
+      "properties": {
+        "type": "Finanças pessoais",
+        "features": "RAG, assistente familiar"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "location_montreal",
+      "name": "Montréal",
+      "type": "location",
+      "properties": {
+        "province": "QC",
+        "country": "Canada"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "location_udem",
+      "name": "Université de Montréal",
+      "type": "location",
+      "properties": {
+        "type": "universidade"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_python",
+      "name": "Python",
+      "type": "concept",
+      "properties": {
+        "type": "linguagem"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_fastapi",
+      "name": "FastAPI",
+      "type": "concept",
+      "properties": {
+        "type": "framework"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_pytorch",
+      "name": "PyTorch",
+      "type": "concept",
+      "properties": {
+        "type": "framework"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_react",
+      "name": "React",
+      "type": "concept",
+      "properties": {
+        "type": "framework"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_typescript",
+      "name": "TypeScript",
+      "type": "concept",
+      "properties": {
+        "type": "linguagem"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_docker",
+      "name": "Docker",
+      "type": "concept",
+      "properties": {
+        "type": "tool"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_qwen",
+      "name": "Qwen2.5-7B-Instruct",
+      "type": "concept",
+      "properties": {
+        "type": "model"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "tech_lora",
+      "name": "LoRA",
+      "type": "concept",
+      "properties": {
+        "type": "technique"
+      },
+      "metadata": {}
+    }
+  ],
+  "relationships": [
+    {
+      "source_id": "person_marco",
+      "target_id": "person_ana_paula",
+      "relation_type": "married_to",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_marco",
+      "target_id": "person_rapha",
+      "relation_type": "father_of",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_marco",
+      "target_id": "person_alice",
+      "relation_type": "father_of",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_ana_paula",
+      "target_id": "person_rapha",
+      "relation_type": "mother_of",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_ana_paula",
+      "target_id": "person_alice",
+      "relation_type": "mother_of",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_ana_paula",
+      "target_id": "person_matheus",
+      "relation_type": "sister_of",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_marco",
+      "target_id": "project_superezio",
+      "relation_type": "created",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_marco",
+      "target_id": "project_trafficai",
+      "relation_type": "works_on",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_marco",
+      "target_id": "project_bebe_ia",
+      "relation_type": "works_on",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_marco",
+      "target_id": "project_xubudget",
+      "relation_type": "works_on",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_rapha",
+      "target_id": "location_udem",
+      "relation_type": "studies_at",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_marco",
+      "target_id": "location_montreal",
+      "relation_type": "lives_in",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_ana_paula",
+      "target_id": "location_montreal",
+      "relation_type": "lives_in",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_rapha",
+      "target_id": "location_montreal",
+      "relation_type": "lives_in",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "person_alice",
+      "target_id": "location_montreal",
+      "relation_type": "lives_in",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "tech_python",
+      "target_id": "tech_fastapi",
+      "relation_type": "used_with",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "tech_python",
+      "target_id": "tech_pytorch",
+      "relation_type": "used_with",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "tech_python",
+      "target_id": "tech_qwen",
+      "relation_type": "used_with",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "tech_qwen",
+      "target_id": "tech_lora",
+      "relation_type": "used_with",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "tech_typescript",
+      "target_id": "tech_react",
+      "relation_type": "used_with",
+      "properties": {},
+      "weight": 1.0
+    },
+    {
+      "source_id": "tech_docker",
+      "target_id": "tech_python",
+      "relation_type": "containerizes",
+      "properties": {},
+      "weight": 1.0
+    }
+  ]
+}

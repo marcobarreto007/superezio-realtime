@@ -1,0 +1,8 @@
+# Este diretório armazena catálogos JSON gerados pelo HF Harvester
+# Os arquivos JSON não são versionados no git (ver .gitignore)
+# 
+# Estrutura dos catálogos:
+# - batch_code_models.json      (modelos de código)
+# - batch_code_datasets.json    (datasets de código)
+# - models_catalog_*.json       (buscas individuais)
+# - datasets_catalog_*.json     (buscas individuais)

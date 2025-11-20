@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Implementa uma classe Python Calculator com métodos add, subtract, multiply e divide."
+    }
+  ],
+  "max_tokens": 1000,
+  "temperature": 0.2,
+  "stream": false
+}
