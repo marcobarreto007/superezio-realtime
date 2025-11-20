@@ -1,7 +1,7 @@
 /**
  * App SuperEzio
  * Interface limpa e direta - reflete a personalidade
- * Memória eterna + RAG + Streaming
+ * Memória eterna + RAG + Streaming + AGENTE DE SISTEMA
  */
 
 import { Sidebar } from './components/Sidebar'
@@ -19,7 +19,13 @@ export default function App() {
     newConversation,
     selectConversation,
     deleteConversation,
-    sendMessage
+    sendMessage,
+    // Agent Props
+    pendingAction,
+    confirmAction,
+    cancelAction,
+    isAgentExecuting,
+    lastResult
   } = useChat()
 
   useEffect(() => {
@@ -45,6 +51,12 @@ export default function App() {
         conversation={currentConversation}
         isStreaming={isStreaming}
         onSendMessage={sendMessage}
+        // Agent Props passed down
+        pendingAction={pendingAction}
+        onConfirmAction={confirmAction}
+        onCancelAction={cancelAction}
+        isAgentExecuting={isAgentExecuting}
+        lastResult={lastResult}
       />
     </div>
   )

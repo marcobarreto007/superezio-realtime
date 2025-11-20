@@ -30,6 +30,10 @@ const PROJECT_ROOT = path.resolve(process.cwd());
 function normalizePath(filePath: string): string {
   console.log(`[AgentTools] normalizePath INPUT: "${filePath}"`);
   
+  if (!filePath) {
+    return PROJECT_ROOT;
+  }
+
   if (path.isAbsolute(filePath) || filePath.match(/^[A-Z]:\\/i)) {
     console.log(`[AgentTools] Caminho absoluto detectado: ${filePath}`);
     return filePath;
@@ -45,49 +49,49 @@ export const AVAILABLE_TOOLS: AgentTool[] = [
   {
     name: 'read_file',
     description: 'Lê o conteúdo de um arquivo',
-    parameters: { filePath: 'string' },
+    parameters: { path: 'string' },
     requiresConfirmation: false,
   },
   {
     name: 'write_file',
     description: 'Escreve conteúdo em um arquivo (cria ou sobrescreve)',
-    parameters: { filePath: 'string', content: 'string' },
+    parameters: { path: 'string', content: 'string' },
     requiresConfirmation: true,
   },
   {
     name: 'list_directory',
     description: 'Lista arquivos e pastas em um diretório',
-    parameters: { dirPath: 'string' },
+    parameters: { path: 'string' },
     requiresConfirmation: false,
   },
   {
     name: 'create_directory',
     description: 'Cria um novo diretório',
-    parameters: { dirPath: 'string' },
+    parameters: { path: 'string' },
     requiresConfirmation: true,
   },
   {
     name: 'delete_file',
     description: 'Deleta um arquivo ou diretório',
-    parameters: { filePath: 'string' },
+    parameters: { path: 'string' },
     requiresConfirmation: true,
   },
   {
     name: 'search_files',
     description: 'Busca arquivos por nome ou padrão',
-    parameters: { searchPath: 'string', pattern: 'string' },
+    parameters: { path: 'string', pattern: 'string' },
     requiresConfirmation: false,
   },
   {
     name: 'get_file_info',
     description: 'Obtém informações sobre um arquivo (tamanho, data, etc)',
-    parameters: { filePath: 'string' },
+    parameters: { path: 'string' },
     requiresConfirmation: false,
   },
   {
     name: 'create_table',
     description: 'Cria uma tabela HTML/CSV a partir de dados',
-    parameters: { data: 'array', format: 'string (html|csv)', outputPath: 'string' },
+    parameters: { data: 'array', format: 'string (html|csv)', outputPath: 'string' }, // Note: Python definition differs slightly (headers/rows), handle both if possible or align
     requiresConfirmation: true,
   },
   {
@@ -127,7 +131,8 @@ export async function executeTool(toolName: string, parameters: Record<string, a
     return {
       tool: toolName,
       parameters,
-      error: 'Confirmação necessária para executar esta ação',
+      requiresConfirmation: true, // Explicit flag
+      message: `Confirmação necessária para executar: ${toolName}`,
       timestamp: new Date().toISOString(),
     };
   }
@@ -135,14 +140,17 @@ export async function executeTool(toolName: string, parameters: Record<string, a
   try {
     let result: any;
 
+    // Mapeamento de parâmetros antigos para novos (retrocompatibilidade)
+    const targetPath = parameters.path || parameters.filePath || parameters.dirPath || parameters.searchPath;
+
     switch (toolName) {
       case 'read_file':
-        const readPath = normalizePath(parameters.filePath);
+        const readPath = normalizePath(targetPath);
         result = await fs.readFile(readPath, 'utf-8');
         break;
 
       case 'write_file':
-        const writePath = normalizePath(parameters.filePath);
+        const writePath = normalizePath(targetPath);
         await fs.ensureDir(path.dirname(writePath));
         await fs.writeFile(writePath, parameters.content, 'utf-8');
         result = { success: true, message: `Arquivo escrito: ${writePath}` };
@@ -150,7 +158,7 @@ export async function executeTool(toolName: string, parameters: Record<string, a
 
       case 'list_directory':
         try {
-          const listPath = normalizePath(parameters.dirPath || '.');
+          const listPath = normalizePath(targetPath || '.');
           console.log(`[AgentTools] Tentando listar: ${listPath}`);
           
           if (!await fs.pathExists(listPath)) {
@@ -178,7 +186,7 @@ export async function executeTool(toolName: string, parameters: Record<string, a
           
           result = {
             success: true,
-            requestedPath: parameters.dirPath,
+            requestedPath: targetPath,
             resolvedPath: listPath,
             total: details.length,
             items: details.sort((a, b) => {
@@ -188,32 +196,32 @@ export async function executeTool(toolName: string, parameters: Record<string, a
           };
         } catch (error: any) {
           result = {
-            error: `Erro ao acessar "${parameters.dirPath}": ${error.message}`,
-            requestedPath: parameters.dirPath,
-            resolvedPath: normalizePath(parameters.dirPath || '.'),
+            error: `Erro ao acessar "${targetPath}": ${error.message}`,
+            requestedPath: targetPath,
+            resolvedPath: normalizePath(targetPath || '.'),
           };
         }
         break;
 
       case 'create_directory':
-        const createPath = normalizePath(parameters.dirPath);
+        const createPath = normalizePath(targetPath);
         await fs.ensureDir(createPath);
         result = { success: true, message: `Diretório criado: ${createPath}` };
         break;
 
       case 'delete_file':
-        const deletePath = normalizePath(parameters.filePath);
+        const deletePath = normalizePath(targetPath);
         await fs.remove(deletePath);
         result = { success: true, message: `Arquivo deletado: ${deletePath}` };
         break;
 
       case 'search_files':
-        const searchPath = normalizePath(parameters.searchPath);
+        const searchPath = normalizePath(targetPath);
         result = await searchFilesRecursive(searchPath, parameters.pattern);
         break;
 
       case 'get_file_info':
-        const infoPath = normalizePath(parameters.filePath);
+        const infoPath = normalizePath(targetPath);
         const fileStats = await fs.stat(infoPath);
         result = {
           path: infoPath,
@@ -226,7 +234,20 @@ export async function executeTool(toolName: string, parameters: Record<string, a
         break;
 
       case 'create_table':
-        result = await createTable(parameters.data, parameters.format, parameters.outputPath);
+        // Handle both formats (simple data array vs headers/rows)
+        if (parameters.headers && parameters.rows) {
+            // Convert to simple array of objects for internal createTable
+            const data = parameters.rows.map((row: string[]) => {
+                const obj: any = {};
+                parameters.headers.forEach((header: string, i: number) => {
+                    obj[header] = row[i];
+                });
+                return obj;
+            });
+            result = await createTable(data, parameters.format || 'csv', parameters.outputPath);
+        } else {
+            result = await createTable(parameters.data, parameters.format, parameters.outputPath);
+        }
         break;
 
       case 'read_emails':
@@ -267,7 +288,7 @@ export async function executeTool(toolName: string, parameters: Record<string, a
 
 async function searchFilesRecursive(dirPath: string, pattern: string): Promise<string[]> {
   const results: string[] = [];
-  const regex = new RegExp(pattern, 'i');
+  const regex = new RegExp(pattern.replace(/\*/g, '.*'), 'i'); // Basic glob to regex
   
   async function search(currentPath: string) {
     try {
@@ -277,7 +298,10 @@ async function searchFilesRecursive(dirPath: string, pattern: string): Promise<s
         const stats = await fs.stat(itemPath);
         
         if (stats.isDirectory()) {
-          await search(itemPath);
+          // Avoid infinite loops and massive scans (node_modules, .git)
+          if (!itemPath.includes('node_modules') && !itemPath.includes('.git')) {
+             await search(itemPath);
+          }
         } else if (regex.test(item)) {
           results.push(path.relative(PROJECT_ROOT, itemPath));
         }
@@ -305,8 +329,9 @@ async function createTable(data: any[], format: string, outputPath?: string): Pr
     ].join('\n');
 
     if (outputPath) {
-      await fs.writeFile(outputPath, csv, 'utf-8');
-      return { success: true, message: `CSV criado: ${outputPath}`, preview: csv.substring(0, 500) };
+        const writePath = normalizePath(outputPath);
+        await fs.writeFile(writePath, csv, 'utf-8');
+        return { success: true, message: `CSV criado: ${writePath}`, preview: csv.substring(0, 500) };
     }
     return { csv, preview: csv.substring(0, 500) };
   }
@@ -324,19 +349,12 @@ async function createTable(data: any[], format: string, outputPath?: string): Pr
     `;
 
     if (outputPath) {
-      await fs.writeFile(outputPath, html, 'utf-8');
-      return { success: true, message: `HTML criado: ${outputPath}`, html };
+        const writePath = normalizePath(outputPath);
+        await fs.writeFile(writePath, html, 'utf-8');
+        return { success: true, message: `HTML criado: ${writePath}`, html };
     }
     return { html };
   }
 
   return { error: 'Formato não suportado. Use "csv" ou "html"' };
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }

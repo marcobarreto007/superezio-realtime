@@ -1,6 +1,6 @@
 /**
- * Hook useChat - Gerencia conversas, memória eterna e streaming
- * Integrado com RAG para contexto
+ * Hook useChat - Gerencia conversas, memória eterna, streaming e AGENTE
+ * Integrado com RAG para contexto + Agente de Sistema
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -8,6 +8,7 @@ import type { Conversation, Message, ChatState } from '../types/chat'
 import { memoryService } from '../services/memory'
 import { apiClient } from '../services/api'
 import { ragService } from '../services/ragService'
+import { useAgent } from './useAgent'
 
 export function useChat() {
   const [state, setState] = useState<ChatState>({
@@ -16,6 +17,16 @@ export function useChat() {
     isLoading: false,
     isStreaming: false
   })
+
+  // Integrar Hook do Agente
+  const {
+    pendingAction,
+    processToolCalls,
+    confirmAction,
+    cancelAction,
+    lastResult,
+    isExecuting: isAgentExecuting
+  } = useAgent();
 
   console.log('🎣 [useChat] Hook inicializado')
 
@@ -37,7 +48,7 @@ export function useChat() {
           messages: [{
             id: `msg_${Date.now()}`,
             role: 'assistant',
-            content: 'E aí! 👋 Quem é você? Fala aí pra eu saber com quem tô conversando!',
+            content: 'E aí! 👋 Sou o SuperEzio. Posso te ajudar com código, e-mails e arquivos. O que manda?',
             timestamp: Date.now()
           }],
           createdAt: Date.now(),
@@ -72,7 +83,7 @@ export function useChat() {
       messages: [{
         id: `msg_${Date.now()}`,
         role: 'assistant',
-        content: 'E aí! Quem é você?',
+        content: 'E aí! Em que posso ajudar hoje?',
         timestamp: Date.now()
       }],
       createdAt: Date.now(),
@@ -111,7 +122,7 @@ export function useChat() {
     })
   }, [])
 
-  // Enviar mensagem com streaming
+  // Enviar mensagem com streaming e suporte a Agente
   const sendMessage = useCallback(async (content: string) => {
     let convId = state.currentConversationId
     if (!convId) {
@@ -155,6 +166,7 @@ export function useChat() {
         ragContext
       }
 
+      // Adicionar msg vazia do assistant para ir preenchendo
       setState(prev => ({
         ...prev,
         conversations: prev.conversations.map(c =>
@@ -165,25 +177,81 @@ export function useChat() {
       }))
 
       let fullContent = ''
+      let toolCallsBuffer = [];
+
+      // 1. Call Chat Stream
+      // Note: If the backend decides to call a tool, it might do so in the stream or at the end.
+      // Our Python backend (api.py) currently sends tool_calls in the JSON response (non-streaming mostly),
+      // OR if we use the streaming endpoint, we need to check if it sends structured tool calls.
+      // Since we modified apiClient to yield tool_calls object, we check for type.
 
       for await (const chunk of apiClient.chatStream(messages)) {
-        fullContent += chunk
+        if (typeof chunk === 'string') {
+            fullContent += chunk
+            setState(prev => ({
+              ...prev,
+              conversations: prev.conversations.map(c =>
+                c.id === convId
+                  ? {
+                      ...c,
+                      messages: c.messages.map(m =>
+                        m.id === assistantMessage.id
+                          ? { ...m, content: fullContent }
+                          : m
+                      )
+                    }
+                  : c
+              )
+            }))
+        } else if (typeof chunk === 'object' && 'tool_calls' in chunk) {
+            // Received tool calls!
+            toolCallsBuffer = chunk.tool_calls;
+        }
+      }
 
-        setState(prev => ({
-          ...prev,
-          conversations: prev.conversations.map(c =>
-            c.id === convId
-              ? {
-                  ...c,
-                  messages: c.messages.map(m =>
-                    m.id === assistantMessage.id
-                      ? { ...m, content: fullContent }
-                      : m
-                  )
-                }
-              : c
-          )
-        }))
+      // 2. Process Tool Calls (if any)
+      // Note: If the stream finishes and we have tool calls, we execute them.
+      // Ideally we should handle this recursively (Agent Loop), but for now 1 turn is good.
+
+      // HACK: Check if content looks like a JSON tool call if strict parsing failed
+      if (fullContent.includes('"tool_calls":') || fullContent.trim().startsWith('{')) {
+         try {
+            const possibleJson = JSON.parse(fullContent);
+            if (possibleJson.tool_calls) {
+                toolCallsBuffer = possibleJson.tool_calls;
+                // Clean up the message content if it was just JSON
+                if (!possibleJson.content) fullContent = "Executando ferramentas...";
+            }
+         } catch (e) {
+             // Not valid JSON, ignore
+         }
+      }
+
+      if (toolCallsBuffer.length > 0) {
+        console.log("🛠️ Tool Calls Detected:", toolCallsBuffer);
+        const results = await processToolCalls(toolCallsBuffer);
+
+        // Add tool results to conversation history
+        if (results && results.length > 0) {
+             const toolOutputMsg: Message = {
+                id: `msg_${Date.now() + 2}`,
+                role: 'system', // Or 'tool' role if supported
+                content: `Resultado das ferramentas:\n${JSON.stringify(results, null, 2)}`,
+                timestamp: Date.now()
+             };
+
+             setState(prev => ({
+                ...prev,
+                conversations: prev.conversations.map(c =>
+                  c.id === convId
+                    ? { ...c, messages: [...c.messages, toolOutputMsg] }
+                    : c
+                )
+              }));
+
+              // Optionally: Send back to LLM for final response (Agent Loop)
+              // sendMessage("Continue com base nos resultados acima."); // Recursion risk?
+        }
       }
 
       // Adicionar resposta ao RAG
@@ -193,7 +261,7 @@ export function useChat() {
 
       // Salvar na memória eterna
       const finalConv = state.conversations.find(c => c.id === convId)!
-      const title = finalConv.messages.length === 3 // 1 inicial + 1 user + 1 assistant
+      const title = finalConv.messages.length === 3
         ? content.substring(0, 50)
         : finalConv.title
 
@@ -207,7 +275,7 @@ export function useChat() {
       console.error('Erro no streaming:', error)
       setState(prev => ({ ...prev, isStreaming: false }))
     }
-  }, [state.currentConversationId, state.conversations, newConversation])
+  }, [state.currentConversationId, state.conversations, newConversation, processToolCalls])
 
   return {
     conversations: state.conversations,
@@ -217,6 +285,12 @@ export function useChat() {
     newConversation,
     selectConversation,
     deleteConversation,
-    sendMessage
+    sendMessage,
+    // Agent Props
+    pendingAction,
+    confirmAction,
+    cancelAction,
+    isAgentExecuting,
+    lastResult
   }
 }

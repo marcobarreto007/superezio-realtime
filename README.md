@@ -1,50 +1,74 @@
-# SuperEzio Realtime
+# SuperEzio Realtime (Multi-LoRA Edition)
 
-Um frontend de chat moderno, limpo e responsivo, construído para interagir com o modelo Qwen2.5-7B-Instruct rodando 100% local via Hugging Face.
+O **SuperEzio Realtime** é um assistente de IA local de alta performance, projetado para privacidade, velocidade e utilidade real.
 
-Este projeto foi completamente reestruturado para ter uma arquitetura clara, uma interface de usuário moderna e uma integração com backend Python FastAPI para inferência GPU local.
+Diferente de chatbots comuns, ele opera como um **Agente de Sistema**, capaz de interagir com seus arquivos, e-mails e dados, tudo rodando 100% localmente na sua GPU.
 
-## ✨ Features
+![Status](https://img.shields.io/badge/Status-Active-green)
+![Model](https://img.shields.io/badge/Model-Qwen2.5--7B-blue)
+![Tech](https://img.shields.io/badge/Tech-Multi--LoRA-purple)
 
--   Interface de chat fullscreen e responsiva.
--   Estilização moderna com **Tailwind CSS**.
--   Bolhas de mensagem distintas para usuário e assistente.
--   Indicador de "digitando" enquanto o bot processa a resposta.
--   Scroll automático para a mensagem mais recente.
--   Lógica de envio com "Enter" (Shift+Enter para nova linha).
--   Arquitetura baseada em componentes com React e hooks.
+## ✨ Destaques
 
-## 🚀 Como Rodar o Projeto
+*   **🧠 Cérebro Multi-LoRA:** Usa múltiplos adaptadores "Experts" (Personalidade, Contabilidade, etc.) simultaneamente sobre um modelo base Qwen2.5-7B.
+*   **🛡️ 100% Local e Privado:** Nenhum dado sai da sua máquina. Inferência acelerada por GPU (CUDA).
+*   **🛠️ Agente Real:** Capaz de ler/escrever arquivos, gerenciar pastas e ler e-mails (com sua permissão expressa).
+*   **⚡ Interface Moderna:** Frontend React reativo, com streaming de tokens em tempo real e highlight de sintaxe.
 
-1.  **Clone o repositório:**
+## 🚀 Início Rápido
+
+### Pré-requisitos
+*   NVIDIA GPU com drivers atualizados (recomendado 6GB+ VRAM).
+*   Node.js 18+ e Python 3.10+.
+
+### Instalação
+
+1.  **Clone e Instale:**
     ```bash
     git clone https://github.com/marcobarreto007/superezio-realtime.git
     cd superezio-realtime
-    ```
-
-2.  **Instale as dependências:**
-    ```bash
     npm install
     ```
 
-3.  **Configure as variáveis de ambiente:**
-    -   Não é mais necessário configurar `.env.local`
-    -   O backend Python usa o modelo local em `models/qwen2.5-7b-instruct/`
-
-4.  **Inicie o servidor de desenvolvimento:**
+2.  **Backend Python (Venv):**
     ```bash
-    npm run dev
+    cd backend
+    python -m venv venv
+    .\venv\Scripts\activate
+    pip install -r requirements.txt
+    # Se necessário, instale PyTorch com CUDA:
+    # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
     ```
 
-    Abra [http://localhost:3000](http://localhost:3000) no seu navegador para ver o projeto.
+3.  **Modelos:**
+    Certifique-se de que o modelo `qwen2.5-7b-instruct` está em `models/`.
+    (Use `scripts/download_model.py` se necessário).
 
-## 🛠️ Tech Stack
+### Rodando
 
--   **Framework:** React 18
--   **Linguagem:** TypeScript
--   **Build Tool:** Vite
--   **Estilização:** Tailwind CSS
--   **IA Backend:** Python FastAPI + Hugging Face Transformers (Qwen2.5-7B-Instruct)
+Use o script mestre para iniciar tudo (Backend Python, Servidor Node e Frontend):
+
+```bash
+# Windows
+start_all.bat
+```
+
+Acesse **http://localhost:3000**.
+
+## 📚 Documentação
+
+A documentação completa foi reorganizada em `docs/`:
+
+*   [**Arquitetura Técnica**](docs/ARCHITECTURE.md): Entenda como o Multi-LoRA e o Agente funcionam.
+*   [**Guia de Uso**](docs/usage/COMO_USAR_BACKEND.md): Como interagir com o bot.
+*   [**Guia de Setup**](docs/setup/COMO_INICIAR_SERVIDORES.md): Detalhes de instalação e solução de problemas.
+
+## 🛠️ Estrutura do Projeto
+
+*   `backend/`: API de Inferência Python (FastAPI + Transformers).
+*   `server/`: Servidor Intermediário Node.js (Express + Ferramentas de Sistema).
+*   `src/`: Frontend React (Chat Interface).
+*   `models/`: Armazenamento local de modelos e LoRAs.
 
 ---
-*Este projeto foi refatorado com a assistência do Gemini CLI.*
+*Desenvolvido por Marco Barreto.*

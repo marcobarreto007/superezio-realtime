@@ -1,6 +1,8 @@
+import type { ToolCall } from './agentService';
+
 /**
  * Cliente API SuperEzio
- * Streaming + RAG integrado
+ * Streaming + RAG integrado + Tool Calling
  */
 
 import type { ChatRequest, ChatResponse, Message } from '../types/chat'
@@ -15,6 +17,7 @@ class APIClient {
     console.log('🚀 [APIClient] Inicializado')
     console.log(`📍 [APIClient] Base URL: ${API_BASE}`)
   }
+
   async chat(messages: Message[], stream: boolean = false): Promise<ChatResponse> {
     console.log('📤 [APIClient] Enviando chat request (não-streaming)')
     console.log(`📊 [APIClient] ${messages.length} mensagens`)
@@ -24,7 +27,7 @@ class APIClient {
         role: m.role,
         content: m.content
       })),
-      temperature: 0.7,
+      temperature: 0.2, // Reduced temp for better tool use
       max_tokens: 512,
       stream: false
     }
@@ -46,11 +49,11 @@ class APIClient {
     }
 
     const data = await response.json()
-    console.log('✅ [APIClient] Resposta recebida')
+    console.log('✅ [APIClient] Resposta recebida', data)
     return data as ChatResponse
   }
 
-  async *chatStream(messages: Message[]): AsyncGenerator<string> {
+  async *chatStream(messages: Message[]): AsyncGenerator<string | { tool_calls: ToolCall[] }> {
     console.log('📤 [APIClient] Iniciando streaming')
     console.log(`📊 [APIClient] ${messages.length} mensagens no histórico`)
     
@@ -59,7 +62,7 @@ class APIClient {
         role: m.role,
         content: m.content
       })),
-      temperature: 0.7,
+      temperature: 0.2,
       max_tokens: 512,
       stream: true
     }
@@ -90,6 +93,7 @@ class APIClient {
 
     const decoder = new TextDecoder()
     let chunkCount = 0
+    let buffer = ''
 
     while (true) {
       const { done, value } = await reader.read()
@@ -100,16 +104,29 @@ class APIClient {
 
       chunkCount++
       const chunk = decoder.decode(value, { stream: true })
-      const lines = chunk.split('\n')
+      buffer += chunk
+
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || '' // Keep incomplete line in buffer
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.substring(6)
           try {
             const parsed = JSON.parse(data)
+
+            // Handle normal content
             if (parsed.content) {
               yield parsed.content
             }
+
+            // Handle tool calls (if they come in stream - depends on backend implementation)
+            // Note: Current Python backend sends tool calls in non-streaming mode usually,
+            // but if it sends in stream, we catch it here.
+            if (parsed.tool_calls) {
+                yield { tool_calls: parsed.tool_calls }
+            }
+
             if (parsed.done) {
               console.log('🏁 [APIClient] Stream done signal recebido')
               return
