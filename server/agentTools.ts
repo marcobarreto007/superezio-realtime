@@ -3,6 +3,7 @@
 
 import fs from 'fs-extra';
 import path from 'path';
+import os from 'os';
 import { readEmails, searchEmails, getUnreadCount } from './emailService.js'; // Usar .js na importação para compatibilidade com módulos ES
 
 // Interfaces para tipagem
@@ -91,7 +92,7 @@ export const AVAILABLE_TOOLS: AgentTool[] = [
   {
     name: 'create_table',
     description: 'Cria uma tabela HTML/CSV a partir de dados',
-    parameters: { data: 'array', format: 'string (html|csv)', outputPath: 'string' }, // Note: Python definition differs slightly (headers/rows), handle both if possible or align
+    parameters: { data: 'array', format: 'string (html|csv)', outputPath: 'string' },
     requiresConfirmation: true,
   },
   {
@@ -110,6 +111,12 @@ export const AVAILABLE_TOOLS: AgentTool[] = [
     name: 'get_unread_count',
     description: 'Obtém quantidade de emails não lidos',
     parameters: {},
+    requiresConfirmation: false,
+  },
+  {
+    name: 'get_weather',
+    description: 'Busca informações de clima/tempo para uma localidade e data. OBRIGATÓRIO usar antes de responder perguntas sobre clima. Se não houver API configurada, retorna erro indicando ausência de acesso a dados de clima em tempo real.',
+    parameters: { location: 'string', date: 'string (opcional, padrão: hoje)' },
     requiresConfirmation: false,
   },
 ];
@@ -141,6 +148,7 @@ export async function executeTool(toolName: string, parameters: Record<string, a
     let result: any;
 
     // Mapeamento de parâmetros antigos para novos (retrocompatibilidade)
+    // Isso garante que parameters.path, parameters.filePath, etc sejam unificados
     const targetPath = parameters.path || parameters.filePath || parameters.dirPath || parameters.searchPath;
 
     switch (toolName) {
@@ -216,8 +224,26 @@ export async function executeTool(toolName: string, parameters: Record<string, a
         break;
 
       case 'search_files':
-        const searchPath = normalizePath(targetPath);
-        result = await searchFilesRecursive(searchPath, parameters.pattern);
+        // Resolver Desktop do usuário se mencionado - Lógica da branch MAIN integrada
+        let searchPathToUse = targetPath; // Usa targetPath unificado
+
+        if (searchPathToUse && (searchPathToUse.toLowerCase().includes('desktop') || !path.isAbsolute(searchPathToUse))) {
+          const userHome = os.homedir();
+          if (searchPathToUse.toLowerCase().includes('desktop')) {
+            // Se menciona desktop explicitamente, tenta montar o caminho
+            // Remove 'desktop' duplicado e barras iniciais
+            const cleanSub = searchPathToUse.replace(/desktop/gi, '').replace(/^[\/\\]+/, '');
+            searchPathToUse = path.join(userHome, 'Desktop', cleanSub);
+          } else {
+            // Caminho relativo - resolver a partir do Desktop por padrão (comportamento da MAIN)
+            // Nota: normalizePath usa process.cwd(), mas aqui forçamos Desktop se for relativo para busca
+            searchPathToUse = path.join(userHome, 'Desktop', searchPathToUse);
+          }
+        }
+
+        // Se ainda não definido, usa o padrão normalizado
+        const finalSearchPath = normalizePath(searchPathToUse || targetPath);
+        result = await searchFilesRecursive(finalSearchPath, parameters.pattern);
         break;
 
       case 'get_file_info':
@@ -264,6 +290,41 @@ export async function executeTool(toolName: string, parameters: Record<string, a
 
       case 'get_unread_count':
         result = { unreadCount: await getUnreadCount() };
+        break;
+
+      case 'get_weather':
+        // Verificar se há API key configurada
+        const weatherApiKey = process.env.OPENWEATHER_API_KEY;
+
+        if (!weatherApiKey) {
+          result = {
+            error: 'no_weather_api_configured',
+            message: 'API de clima não está configurada. Não tenho acesso a dados de clima em tempo real.',
+            location: parameters.location || 'não especificada',
+            date: parameters.date || 'hoje',
+          };
+        } else {
+          try {
+            // Tentar buscar via OpenWeatherMap (ou outra API)
+            const location = parameters.location || '';
+            const date = parameters.date || 'today';
+
+            // Por enquanto, retornar erro controlado até implementar a API real
+            // TODO: Implementar chamada real à API de clima quando necessário
+            result = {
+              error: 'no_weather_api_configured',
+              message: 'API de clima não está totalmente implementada ainda. Não tenho acesso a dados de clima em tempo real.',
+              location: location,
+              date: date,
+            };
+          } catch (error: any) {
+            result = {
+              error: 'weather_api_error',
+              message: `Erro ao buscar clima: ${error.message}`,
+              location: parameters.location || 'não especificada',
+            };
+          }
+        }
         break;
 
       default:
